@@ -3,3 +3,4 @@
 .vagrant/
 vendor/
 composer.lock
+app/logs/*
