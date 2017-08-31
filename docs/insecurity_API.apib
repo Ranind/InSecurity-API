@@ -326,31 +326,105 @@ API for interacting with the InSecurity Network Scanner.
                     },
                     "required": []
                 },
-                "CVE_vulnerability": {
+                "CVE": {
                   "type": "object",
                   "properties": {
-                    "Vuln_ID": "string",
-                    "Summary": "string",
-                    "CVSS_Severity": "float"
+                    "Vuln_ID": {
+                        type: "string",
+                        "description": ""
+                    },
+                    "Summary": {
+                        type: "string",
+                        "description": ""
+                    },
+                    "CVSS_Severity": {
+                        type: "float",
+                        "description": ""
+                    },
                   },
                   "required": ["Vuln_ID", "Summary", "CVSS_Severity"]
+                },
+                "Service": {
+                  "type": "object",
+                  "properties": {
+                        "protocol":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "name":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "port":{
+                            "type": "int",
+                            "description": ""
+                        }
+                        "service_CPE_list":{
+                            "type": "array",
+                            "items": { $ref": "#/definitions/CPE"  }
+                            "description": ""
+                        }
+                        "service_CVE_list": { 
+                            "type": "array",
+                            "items": { $ref": "#/definitions/CVE"  }
+                            "description": ""
+                        },
+                        "state":{
+                            "type": "string",
+                            "description": "open/closed/filtered"
+                        }
+                        "reason":{
+                            "type": "string",
+                            "description": ""
+                        }
+                        "banner":{
+                            "type": "int",
+                            "description": ""
+                        }
+                        "product":{
+                            "type": "int",
+                            "description": ""
+                        }
+                  },
+                  "required": []
                 },
                 "Device" : {
                     "type" : "object",
                     "properties": {
-                        "Vulnerability_Score": "float",
-                        "IP" : "string",
-                        "MAC_Address" : "string",
-                        "Vendor" : "string",
+                        "Vulnerability_Score": {
+                            type : "float",
+                            "description": ""
+                        },
+                        "IP" : {
+                            type : "string",
+                            "description": ""
+                        }
+                        "MAC_Address" : {
+                            type : "string",
+                            "description": ""
+                        }
+                        "Vendor" : {
+                            type : "string",
+                            "description": ""
+                        }
                         "host_CPE_list": {
                             "type": "array",
                             "items": { "type": "string" }
                         },
-                        "host_CVE_Vulnerabilities": [{ "$ref": "#/definitions/CVE_vulnerability" }],
-                        "Services" : ["string"],
-                        "Identification_Accuracy" : "float"
+                        "host_CVE_list": { 
+                            "type" : "array"
+                            "items": { "$ref": "#/definitions/CVE" }
+                        },
+                        "Services" : {
+                            type : "array",
+                            "items": { "$ref": "#/definitions/Service" }
+                        }
+                        "Identification_Accuracy" : {
+                            type :  "float",
+                            "description": ""
+                        }
                     },
-                    "required": ["Vulnerability_Score_ID", "IP", "MAC_Address", "Vendor", "CPE_list", "Open_Ports", "Filtered_Ports", "Services", "CVE_Vulnerabilities", "Identification_Accuracy"]
+                    "required": ["Vulnerability_Score_ID", "IP", "MAC_Address", "Vendor", "host_CPE_list", "Services", "host_CVE_list", "Identification_Accuracy"]
                 },
                 "Router": {
                     "type": "object",
@@ -375,11 +449,25 @@ API for interacting with the InSecurity Network Scanner.
                             "enum": ["Complete", "Discovery", "Vulnerability"],
                             "description": "Determines what type of scan will be run"
                         },
-                        "Vulnerability_Score" : "float",
-                        "Vulnerability_Grade" : "string",
-                        "Wireless_Security_Protocols" : ["string"],
-                        "Router" : { "$ref": "#/definitions/Device" },
-                        "Devices" : [{ "$ref": "#/definitions/Device" }]
+                        "Vulnerability_Score" : {
+                            type: "float",
+                            "description": ""
+                        },
+                        "Vulnerability_Grade" : {
+                            type : "string",
+                            "description": ""
+                        },
+                        "Wireless_Security_Protocols" : {
+                            type : "array",
+                            "items": { "type": "string" }
+                        }
+                        "Router" : { 
+                            "$ref": "#/definitions/Router" 
+                        },
+                        "Devices" : { 
+                            type : "array",
+                            "items": { "$ref": "#/definitions/Device"} 
+                        }
                     },
                     "required": ["Vulnerability_Score","Vulnerability_Grade","Security_Protocols", "Router", "Devices"]
                 }
