@@ -2,7 +2,7 @@
 # Backend Server
 Vagrant.configure("2") do |config|
   # Base VM
-  config.vm.box = "debian/stretch64"
+  config.vm.box = "ubuntu/xenial64"
 
   # Use the bash provisioning script to configure the vm
   config.vm.provision "shell" do |s|

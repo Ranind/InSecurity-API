@@ -3,7 +3,7 @@
 # Apache web root path
 API_WEB_ROOT="/var/www/api.insecurityscanner.com"
 ANG_WEB_ROOT="/var/www/insecurityscanner.com"
-DEFAULT_SITE_PATH="/etc/apache2/sites-available/000-default.conf"
+DEFAULT_SITE_PATH="/etc/apache2/sites-enabled/000-default.conf"
 
 # Path to code (will by symlinked into web root)
 SHARE_ROOT=$1
@@ -35,9 +35,6 @@ debconf-set-selections <<< "mysql-server mysql-server/root_password password $PA
 debconf-set-selections <<< "mysql-server mysql-server/root_password_again password $PASSWORD"
 apt-get -y install mysql-server php-mysql
 
-# Build the database schema
-mysql -u root -p$PASSWORD InSecurity < schema.sql
-
 # Install phpMyAdmin if in dev mode
 if [ $MODE = $DEV_MODE ]; then
     debconf-set-selections <<< "phpmyadmin phpmyadmin/dbconfig-install boolean true"
@@ -49,7 +46,7 @@ if [ $MODE = $DEV_MODE ]; then
 fi
 
 # Install composer dependencies
-apt-get install git zip unzip php7.0-zip
+apt-get -y install git zip unzip php7.0-zip
 
 # Allow for installation of composer
 chown -R `whoami`:root /usr/local/bin
@@ -61,12 +58,12 @@ curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin
 ################################################## DOWNLOAD CODE ##################################################
 
 # Download frontend code
-git clone git@github.com:smuseniordesignmod0/InSecurity-Web-Frontend.git $ANG_WEB_ROOT
+git clone https://github.com/smuseniordesignmod0/InSecurity-Web-Frontend.git $ANG_WEB_ROOT
 
 # Download backend code (needed since not "shared" through vagrant in production)
 if [ $MODE = $PRODUCTION_MODE ]; then
     # API Code
-    git clone git@github.com:smuseniordesignmod0/InSecurity-API.git $API_WEB_ROOT
+    git clone https://github.com/smuseniordesignmod0/InSecurity-API.git $API_WEB_ROOT
 
     # Scanner Code
     # TODO: Determine if this will be 1 repo, 2 disjoint repos, or 2 repos (where scanner is a subrepo)
@@ -86,26 +83,29 @@ fi
 # Run composer (download dependencies)
 composer --working-dir=$API_WEB_ROOT install
 
+# Build the database schema
+mysql -u root -p$PASSWORD InSecurity < /var/www/api.insecurityscanner.com/schema.sql
+
 ################################################## APACHE CONFIG ##################################################
 
 # Destroy default site (if needed)
-if ! [ -L $DEFAULT_SITE_PATH ]; then
+if [ -L $DEFAULT_SITE_PATH ]; then
     rm -f $DEFAULT_SITE_PATH
 fi
 
 # Create virtual server configs (link if dev copy if production)
 if [ $MODE = $DEV_MODE ]; then
-    $cmd="ln -fs"
+    ln -fs $API_WEB_ROOT/api.conf /etc/apache2/sites-enabled/api.insecurityscanner.com.conf
+    ln -fs $API_WEB_ROOT/insecurity.conf /etc/apache2/sites-enabled/insecurityscanner.com.conf
 else
-    $cmd="cp"
+    cp $API_WEB_ROOT/api.conf /etc/apache2/sites-enabled/api.insecurityscanner.com.conf
+    cp $API_WEB_ROOT/insecurity.conf /etc/apache2/sites-enabled/insecurityscanner.com.conf
 fi
-eval $cmd $API_WEB_ROOT/api.conf /etc/apache2/sites-enabled/api.insecurityscanner.com.conf
-eval $cmd $API_WEB_ROOT/insecurity.conf /etc/apache2/sites-enabled/insecurityscanner.com.conf
 
 # Configure web root permissions if in dev mode
 if [ $MODE = $DEV_MODE ]
 then
-    adduser vagrant www-data
+    adduser ubuntu www-data
     chown -R www-data:www-data /var/www
     chmod -R g+rw /var/www
 fi

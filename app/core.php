@@ -46,7 +46,9 @@ $container['db'] = function ($c) {
     return $pdo;
 };
 
-
+$app->get('/', function(Request $request, Response $response) {
+   return $response->write('Hello World!');
+});
 
 
 // Github webhook proxy (for deployment hooks)
