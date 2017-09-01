@@ -118,9 +118,15 @@ a2enmod rewrite
 # Restart Apache2
 service apache2 restart
 
-# Prompt administrator for production password config
+################################################## PRODUCTION CONFIG ##################################################
+
+
 if [ $MODE = $PRODUCTION_MODE ]; then
-    # Read Password
+
+    # Remove debug signal
+    rm "$API_WEB_ROOT/debug_mode"
+
+    # Prompt administrator for production password config
     echo -n "Production Password:"
     read -s PRODUCTION_PASSWORD
     echo
