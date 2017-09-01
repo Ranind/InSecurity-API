@@ -27,7 +27,7 @@ $config = ['settings' => [
     'db' => [
         'host' => 'localhost',
         'dbname' => 'insecurity',
-        'user' => 'root',
+        'user' => 'api',
         'pass' => 'password'
     ],
 ]];
