@@ -84,7 +84,7 @@ fi
 composer --working-dir=$API_WEB_ROOT install
 
 # Build the database schema
-mysql -u root -p$PASSWORD InSecurity < /var/www/api.insecurityscanner.com/schema.sql
+mysql -u root -p$PASSWORD < /var/www/api.insecurityscanner.com/schema.sql
 
 ################################################## APACHE CONFIG ##################################################
 
