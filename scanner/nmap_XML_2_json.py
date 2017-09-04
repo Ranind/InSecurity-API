@@ -13,6 +13,8 @@ from libnmap.parser import NmapParser
 from xml.parsers import expat
 import urllib.request
 
+import re
+
 #settings
 ERROR_STRING = "ERROR"
 
@@ -53,26 +55,106 @@ def write_json(fname, dict):
 	with open(fname, 'w') as dump:
 		json.dump(dict, dump, indent=2)
 
+def get_public_ip():
+	urls = ['http://ip.dnsexit.com',
+							'http://ifconfig.me/ip',
+							'http://ipecho.net/plain',
+							'http://checkip.dyndns.org/plain',
+							'http://whatismyipaddress.com/',
+							'http://websiteipaddress.com/WhatIsMyIp',
+							'http://getmyipaddress.org/',
+							'http://www.my-ip-address.net/',
+							'http://myexternalip.com/raw',
+							'http://www.canyouseeme.org/',
+							'http://www.trackip.net/',
+							'http://icanhazip.com/',
+							'http://www.iplocation.net/',
+							'http://www.howtofindmyipaddress.com/',
+							'http://www.ipchicken.com/',
+							'http://whatsmyip.net/',
+							'http://www.ip-adress.com/',
+							'http://checkmyip.com/',
+							'http://www.tracemyip.org/',
+							'http://www.lawrencegoetz.com/programs/ipinfo/',
+							'http://www.findmyip.co/',
+							'http://ip-lookup.net/',
+							'http://www.dslreports.com/whois',
+							'http://www.mon-ip.com/en/my-ip/',
+							'http://www.myip.ru',
+							'http://ipgoat.com/',
+							'http://www.myipnumber.com/my-ip-address.asp',
+							'http://www.whatsmyipaddress.net/',
+							'http://formyip.com/',
+							'https://check.torproject.org/',
+							'http://www.displaymyip.com/',
+							'http://www.bobborst.com/tools/whatsmyip/',
+							'http://checkip.dyndns.com/',
+							'http://myexternalip.com/',
+							'http://www.ip-adress.eu/',
+							'http://www.infosniper.net/',
+							'https://wtfismyip.com/text',
+							'http://ipinfo.io/',
+							'http://httpbin.org/ip',
+							'https://diagnostic.opendns.com/myip']
+	public_ip = ""
+	error_msg = "Error in get_public_ip"
+
+	for url in urls:
+		public_ip = extract_ip_from_response(fetch(url,error_msg,is_json=False))
+		if public_ip != "": return public_ip
+	return ""
+
+
+def extract_ip_from_response(response):
+	try:
+		regx = re.search(
+			'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)',
+			response)
+		ip = regx.group(0)
+		if len(ip) > 0:
+			return ip
+		return ''
+	except Exception:
+		return ''
+
+def fetch(url, error_msg, is_json=True):
+	request = urllib.request.Request(url)
+	request.add_header('Version', '1.1')
+	request.add_header('Accept',  '*/json')
+	request.add_header('User-agent',
+						  "Mozilla/5.0 (X11; Linux x86_64; rv:24.0) Gecko/20100101 Firefox/24.0")
+
+	response = urllib.request.urlopen(request)
+
+	if is_json:
+		try:
+			content = json.loads(response.read().decode("utf-8"))
+			if content.get("status") != "success":
+				raise Exception()
+		except Exception as e:
+			print (e)
+			raise Exception(error_msg)
+
+		return content.get("data")
+
+	else: 
+
+		content = response.read()
+
+		try:
+			content = content.decode('UTF-8')
+		except UnicodeDecodeError:
+			content = content.decode('ISO-8859-1')
+
+		return content
 
 def CPE_to_dict_CVE_list(CPE_string):
 	dest_port = 443
 	api = 'https://cve.circl.lu:%s/api/cvefor/%s'
 	url = api%(dest_port, CPE_string.lower())
 
-	request = urllib.request.Request(url)
-	request.add_header('Version', '1.1')
-	request.add_header('Accept',  '*/json')
-	response = urllib.request.urlopen(request)
-
-	try:
-		content = json.loads(response.read().decode("utf-8"))
-		if content.get("status") != "success":
-			raise Exception()
-	except Exception as e:
-		print (e)
-		raise Exception("Failed API CVE lookup for CPE string: %s" % CPE_string)
-
-	full_response_json = content.get("data")
+	error_msg = "Failed API CVE lookup for CPE string: %s" % CPE_string
+	full_response_json = fetch(url, error_msg)
 
 	CVE_list = []
 	for c in full_response_json:
@@ -193,7 +275,6 @@ def xmlf_to_payload(xml_fname):
 				'service_CVE_list': []
 			}
 
-
 			if s.cpelist:
 				#
 				# serivce CPE list
@@ -219,7 +300,47 @@ def xmlf_to_payload(xml_fname):
 """
 									run program
 """
+server_list = ['http://ip.dnsexit.com',
+							'http://ifconfig.me/ip',
+							'http://ipecho.net/plain',
+							'http://checkip.dyndns.org/plain',
+							'http://whatismyipaddress.com/',
+							'http://websiteipaddress.com/WhatIsMyIp',
+							'http://getmyipaddress.org/',
+							'http://www.my-ip-address.net/',
+							'http://myexternalip.com/raw',
+							'http://www.canyouseeme.org/',
+							'http://www.trackip.net/',
+							'http://icanhazip.com/',
+							'http://www.iplocation.net/',
+							'http://www.howtofindmyipaddress.com/',
+							'http://www.ipchicken.com/',
+							'http://whatsmyip.net/',
+							'http://www.ip-adress.com/',
+							'http://checkmyip.com/',
+							'http://www.tracemyip.org/',
+							'http://www.lawrencegoetz.com/programs/ipinfo/',
+							'http://www.findmyip.co/',
+							'http://ip-lookup.net/',
+							'http://www.dslreports.com/whois',
+							'http://www.mon-ip.com/en/my-ip/',
+							'http://www.myip.ru',
+							'http://ipgoat.com/',
+							'http://www.myipnumber.com/my-ip-address.asp',
+							'http://www.whatsmyipaddress.net/',
+							'http://formyip.com/',
+							'https://check.torproject.org/',
+							'http://www.displaymyip.com/',
+							'http://www.bobborst.com/tools/whatsmyip/',
+							'http://checkip.dyndns.com/',
+							'http://myexternalip.com/',
+							'http://www.ip-adress.eu/',
+							'http://www.infosniper.net/',
+							'https://wtfismyip.com/text',
+							'http://ipinfo.io/',
+							'http://httpbin.org/ip',
+							'https://diagnostic.opendns.com/myip']
 
 if __name__ == "__main__":
 	print(xmlf_to_payload("../example.xml"))
-
+	print(get_public_ip())
