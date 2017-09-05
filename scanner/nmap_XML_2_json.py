@@ -366,6 +366,23 @@ def grade(percentage):
 	else:
 	    return "F"
 
+def cal_device_vuln_score(device):
+		device_cvsss = []
+		number_of_services = 0
+
+		for cve in device['host_CVE_list']:
+			if type(cve) == dict:
+				device_cvsss.append(cve['CVSS_Severity'])
+
+		for service in device['Services']:
+			for cve in service['service_CVE_list']:
+				if type(cve) == dict:
+					device_cvsss.append(cve['CVSS_Severity'])
+			number_of_services += 1
+
+		device_score = device_vulnerability_score(device_cvsss, number_of_services)
+
+		return device_score
 
 # extract list of device cvss scores
 def calc_vuln_scores_grade():
@@ -374,54 +391,21 @@ def calc_vuln_scores_grade():
 	#
 	# Device vulnerability Scores
 	#
-
 	device_scores = []
-	for d in Report['Devices']:
-		device_cvsss = []
-		number_of_services = 0
-
-		for cve in d['host_CVE_list']:
-			if type(cve) == dict:
-				device_cvsss.append(cve['CVSS_Severity'])
-
-		for service in d['Services']:
-			for cve in service['service_CVE_list']:
-				if type(cve) == dict:
-					device_cvsss.append(cve['CVSS_Severity'])
-			number_of_services += 1
-
-		device_score = device_vulnerability_score(device_cvsss, number_of_services)
+	for device in Report['Devices']:
+		device_score = cal_device_vuln_score(device)
 
 		# set Device 'Vulnerability_Score' in Report
-		d['Vulnerability_Score'] = device_score
-
+		device['Vulnerability_Score'] = device_score
 		device_scores.append(device_score)
 
 	#
 	#	Router vulnerability Score
 	#
-
-	router_cvsss = []
-	number_of_services = 0
-
-	for cve in Report['Router']['host_CVE_list']:
-		if type(cve) == dict:
-			router_cvsss.append(cve['CVSS_Severity'])
-
-	for service in Report['Router']['Services']:
-		for cve in service['service_CVE_list']:
-			if type(cve) == dict:
-				router_cvsss.append(cve['CVSS_Severity'])
-		number_of_services += 1
-
-	router_score = device_vulnerability_score(router_cvsss, number_of_services)
+	router_score = cal_device_vuln_score(Report['Router'])
 
 	# set Router 'Vulnerability_Score' in Report
 	Report['Router']['Vulnerability_Score'] = router_score
-
-	#*temporary*
-	print("Router: %f" % router_score)
-	print("Devices: " + str(device_scores))
 
 	#
 	#	Network vulnerability Score
@@ -433,6 +417,14 @@ def calc_vuln_scores_grade():
 	# set Network 'Vulnerability_Score' and Vulnerability_Grade' in Report
 	Report['Vulnerability_Score'] = network_score
 	Report['Vulnerability_Grade'] = network_grade
+
+
+	#*temporary*
+	print("Router: %f" % router_score)
+	print("Devices: " + str(device_scores))
+
+	print ("Vulnerability_Score: %f" % Report['Vulnerability_Score'])
+	print ("Vulnerability_Grade: %s" % Report['Vulnerability_Grade'])
 
 """
 									run program
@@ -479,9 +471,6 @@ if __name__ == "__main__":
 
 	#*temporary*
 	calc_vuln_scores_grade()
-
-	print (Report['Vulnerability_Score'])
-	print (Report['Vulnerability_Grade'])
 
 
 
