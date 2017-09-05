@@ -1,0 +1,478 @@
+FORMAT: 1A
+HOST: http://polls.apiblueprint.org/
+
+# InSecurity-API
+
+API for interacting with the InSecurity Network Scanner.
+
+## Start a New Scan [/Scanner/Scan]
+
+### Start a New Scan [POST]
+
++ Request (application/json)
+
+    + Body
+    
+            {
+                "scanType": "Targeted",
+                "devices": ["192.168.0.1", "192.168.02", "192.168.0.3", "192.168.0.4"]
+            }
+        
+    + Schema
+    
+            {
+                "type": "object",
+                "anyOf": {
+                    {
+                        "type": "object",
+                        "properties": {
+                            "scanType": {
+                                "type": "string",
+                                "enum": ["Complete", "Discovery", "Vulnerability"],
+                                "description": "Determines what type of scan will be run"
+                            }
+                        },
+                        "required": ["scanType"]
+                    },
+                    {   
+                        "type": "object",
+                        "properties": {
+                            "scanType": {
+                                "type": "string",
+                                "enum": ["Targeted"]
+                            },
+                            "devices": {
+                                "type": "array",
+                                "items": { 
+                                    "type": "string", 
+                                    "oneOf": [
+                                        { "format": "hostname" },
+                                        { "format": "ipv4" },
+                                        { "format": "ipv6" }
+                                    ] 
+                                },
+                                "description": "Array of IPs to run vulnerability scan on"
+                            }
+                        },
+                        "required": ["scanType", "devices"]
+                    }
+                }
+            }
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+                "id": 5
+            }
+            
+    + Schema
+            
+            {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "description": "The id of the newly created scan, -1 if no scan is created."
+                    }
+                },
+                "required": ["id"]
+            }
+
++ Response 400 (application/json)
+
+    + Body
+    
+            {
+                "message": "Invalid Scan Type | Targeted Scans require a list of device ips"
+            }
+            
+    + Schema 
+            
+            {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "Gives the error that caused the 400 response"
+                    }
+                },
+                "required": ["message"]
+            }
+
++ Response 500
+
+## Get Scan History [/Scanner/History]
+
+### Get Scan History [GET]
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "scanType": "Targeted"
+                    "deviceCount": 11,
+                    "started": "2017-08-28 07:51:54.326 +0000",
+                    "completed": "2017-08-28 08:55:23.522 +0000",
+                    "id": 5,
+                    "creator": "192.168.1.1",
+                    "status": "In-Progress"
+                },
+                {
+                    "scanType": "Complete"
+                    "deviceCount": 15,
+                    "started": "2017-08-27 07:31:34.634 +0000",
+                    "completed": "2017-08-27 08:25:27.752 +0000",
+                    "id": 4,
+                    "creator": "192.168.1.2",
+                    "status": "Done"
+                }
+            ]
+            
+    + Schema
+    
+            {
+                "type": "array",
+                "items": { 
+                    "type": "object",
+                    "anyOf": [
+                        { "$ref": "#/definitions/ScanSummary" }
+                    ]
+                },
+                "definitions": {
+                    "ScanSummary": {
+                        "type": "object",
+                        "properties": {
+                            "scanType": {
+                                "type": "string",
+                                "description": "Type of scan",
+                                "options": ["Complete", "Discovery", "Vulnerability", "Targeted"]
+                            },
+                            "deviceCount": {
+                                "type": "integer",
+                                "description": "Number of devices scanned"
+                            },
+                            "started": {
+                                "type": "string",
+                                "description": "Starting timestamp"
+                            },
+                            "completed": {
+                                "type": "string",
+                                "description": "Ending timestamp"
+                            },
+                            "id": {
+                                "type": "integer",
+                                "description": "The scan's Unique ID"
+                            },
+                            "creator": {
+                                "type": "string",
+                                "description": "IP address or username that created the scan"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Informs user if the scan is still running",
+                                "oneOf": ["In-Progress", "Done"]
+                            }
+                        },
+                        "required": ["scanType", "deviceCount", "started", "completed", "id", "creator", "status"]
+                    }
+                }
+            }
+
++ Response 500
+
+## Get Scan Status [/Scan/{id}/Status{?since}]
+
+### Get Scan Status [GET]
+
++ Parameters
+    + id - The unique ID of the scan
+    + since (optional) - Return only logs after this timestamp
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+                "devices": [
+                    "192.168.0.1",
+                    "192.168.0.2",
+                    "192.168.0.3"
+                ],
+                "activityLog": [
+                    "[2017-08-27 05:35:24.754 +0000] Discovered 192.168.0.1",
+                    "[2017-08-27 05:35:24.955 +0000] Discovered 192.168.0.2",
+                    "[2017-08-27 05:35:25.158 +0000] Discovered 192.168.0.3",
+                    "[2017-08-27 05:43:13.733 +0000] Port Scanning 192.168.0.1",
+                    "[2017-08-27 05:48:26.782 +0000] Port Scanning 192.168.0.2",
+                    "[2017-08-27 05:52:39.726 +0000] Port Scanning 192.168.0.3",
+                    "[2017-08-27 05:57:15.786 +0000] Checking 192.168.0.1 for Outdated Software",
+                    "[2017-08-27 05:58:37.764 +0000] Checking 192.168.0.2 for Outdated Software",
+                    "[2017-08-27 05:59:53.737 +0000] Checking 192.168.0.3 for Outdated Software"
+                ],
+                "started": "2017-08-27 05:35:24.754 +0000",
+                "scanType": "Complete",
+                "progress": 65,
+                "lastActivityLogged": "2017-08-27 05:37:28.863 +0000"
+            }
+            
+    + Schema
+    
+            {
+                "type": "object",
+                "properties": {
+                    "devices": {
+                        "type": "array",
+                        "items": { 
+                            "type": "string",
+                            "oneOf": [
+                                { "format": "hostname" },
+                                { "format": "ipv4" },
+                                { "format": "ipv6" }
+                            ] 
+                        },
+                        "description": "IP addresses of devices being scanned"
+                    },
+                    "activityLog": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Line by line output from the scanner"
+                    },
+                    "started": {
+                        "type": "string",
+                        "description": "Starting timestamp"
+                    },
+                    "scanType": {
+                        "type": "string",
+                        "description": "Type of scan",
+                        "options": ["Complete", "Discovery", "Vulnerability", "Targeted"]
+                    },
+                    "progress": {
+                        "type": "int",
+                        "description": "Percentage of scan completed expressed as a whole number"
+                    },
+                    "lastActivityLogged": {
+                        "type": "string",
+                        "description": "Timestamp of last event, intended for use as 'since' parameter in update requests"
+                    },
+                },
+                "required": {
+                    "No 'since' parameter given": ["devices", "activityLog", "started", "scanType", "progress", "lastActivityLogged"],
+                    "'since' parameter given": ["activityLog", "progress", "lastActivityLogged"]
+                }
+            }
+
++ Response 404
+
++ Response 500
+
+## Get Scan Report [/Scan/{id}/Report]
+
+### Get Scan Report [GET]
+
++ Parameters
+    + id - The unique ID of the scan
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+            
+            }
+            
+    + Schema
+    
+            {
+              "definitions": {
+                "CPE": {
+                    "type": "object",
+                    "properties": {
+                        "cpeString":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "getProduct":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "getUpdate":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "getVendor":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "getVersion":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "isApplication":{
+                            "type": "boolean",
+                            "description": ""
+                        },
+                        "isHardware":{
+                            "type": "boolean",
+                            "description": ""
+                        },
+                        "isOperatingSystem":{
+                            "type": "boolean",
+                            "description": ""
+                        }
+                    },
+                    "required": []
+                },
+                "CVE": {
+                  "type": "object",
+                  "properties": {
+                    "Vuln_ID": {
+                        type: "string",
+                        "description": ""
+                    },
+                    "Summary": {
+                        type: "string",
+                        "description": ""
+                    },
+                    "CVSS_Severity": {
+                        type: "float",
+                        "description": ""
+                    },
+                  },
+                  "required": ["Vuln_ID", "Summary", "CVSS_Severity"]
+                },
+                "Service": {
+                  "type": "object",
+                  "properties": {
+                        "protocol":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "name":{
+                            "type": "string",
+                            "description": ""
+                        },
+                        "port":{
+                            "type": "int",
+                            "description": ""
+                        }
+                        "service_CPE_list":{
+                            "type": "array",
+                            "items": { $ref": "#/definitions/CPE"  }
+                            "description": ""
+                        }
+                        "service_CVE_list": { 
+                            "type": "array",
+                            "items": { $ref": "#/definitions/CVE"  }
+                            "description": ""
+                        },
+                        "state":{
+                            "type": "string",
+                            "description": "open/closed/filtered"
+                        }
+                        "reason":{
+                            "type": "string",
+                            "description": ""
+                        }
+                        "banner":{
+                            "type": "int",
+                            "description": ""
+                        }
+                        "product":{
+                            "type": "int",
+                            "description": ""
+                        }
+                  },
+                  "required": []
+                },
+                "Device" : {
+                    "type" : "object",
+                    "properties": {
+                        "Vulnerability_Score": {
+                            type : "float",
+                            "description": ""
+                        },
+                        "IP" : {
+                            type : "string",
+                            "description": ""
+                        }
+                        "MAC_Address" : {
+                            type : "string",
+                            "description": ""
+                        }
+                        "Vendor" : {
+                            type : "string",
+                            "description": ""
+                        }
+                        "host_CPE_list": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                        },
+                        "host_CVE_list": { 
+                            "type" : "array"
+                            "items": { "$ref": "#/definitions/CVE" }
+                        },
+                        "Services" : {
+                            type : "array",
+                            "items": { "$ref": "#/definitions/Service" }
+                        }
+                        "Identification_Accuracy" : {
+                            type :  "float",
+                            "description": ""
+                        }
+                    },
+                    "required": ["Vulnerability_Score_ID", "IP", "MAC_Address", "Vendor", "host_CPE_list", "Services", "host_CVE_list", "Identification_Accuracy"]
+                },
+                "Router": {
+                    "type": "object",
+                    "allOf": [
+                        { "$ref": "#/definitions/Device" },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "publicIP": {
+                                    "type": "string",
+                                    "format": "ipv4"  
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Report":{
+                    "type" : "object",
+                    "properties": {
+                        "scanType": {
+                            "type": "string",
+                            "enum": ["Complete", "Discovery", "Vulnerability"],
+                            "description": "Determines what type of scan will be run"
+                        },
+                        "Vulnerability_Score" : {
+                            type: "float",
+                            "description": ""
+                        },
+                        "Vulnerability_Grade" : {
+                            type : "string",
+                            "description": ""
+                        },
+                        "Wireless_Security_Protocols" : {
+                            type : "array",
+                            "items": { "type": "string" }
+                        }
+                        "Router" : { 
+                            "$ref": "#/definitions/Router" 
+                        },
+                        "Devices" : { 
+                            type : "array",
+                            "items": { "$ref": "#/definitions/Device"} 
+                        }
+                    },
+                    "required": ["Vulnerability_Score","Vulnerability_Grade","Security_Protocols", "Router", "Devices"]
+                }
+            }
+
++ Response 404
+
++ Response 500
