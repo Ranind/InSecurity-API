@@ -22,7 +22,7 @@ incremental_progress = 0
 
 
 def run_nmap(args, scan):
-    log_activity('\t')
+    log_activity('\tScanning ' + scan + ' network')
     return '/path/to/output'
 
 
