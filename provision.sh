@@ -34,8 +34,12 @@ apt-get -y update
 
 ################################################## INSTALL SOFTWARE ##################################################
 
-# Install Apache2 + PHP7
-apt-get install -y apache2 php7.0 php-cli php libapache2-mod-php7.0
+# Install Apache2 + PHP7 + python3 + pip
+apt-get install -y apache2 php7.0 php-cli php libapache2-mod-php7.0 python3 python3-pip
+
+# Install scanner dependencies
+apt-get install -y nmap
+pip3 install python-libnmap
 
 # Install MySQL + dependencies
 debconf-set-selections <<< "mysql-server mysql-server/root_password password $PASSWORD"
