@@ -1,6 +1,13 @@
 import sys
 import MySQLdb
 
+from usefull_methods import *
+from parse_nmap_output_methods import parse_nmap_output
+from get_CVSS_methods import get_cves
+from calculate_vulnerability_methods import calc_vuln_scores_grade
+from get_publicIP_methods import get_public_ip
+#import get_gateway
+
 db_connection = MySQLdb.connect(host='localhost', user='api', passwd='password', db='InSecurity')
 data = []
 scan_id = int(sys.argv[1])
