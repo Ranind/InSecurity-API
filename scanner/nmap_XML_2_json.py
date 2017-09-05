@@ -211,25 +211,27 @@ def CPE_object_to_dict(libnmap_CPE_obj):
 
 	return service_CPE_list
 
-
-# convert nmap xml output to json object for payload
-def xmlf_to_payload(xml_fname):
-
+def libnmap_parse_XML(xml_path):
 	global ERROR_STRING
 	try:
 		#parse data
-		report = NmapParser.parse_fromfile(xml_fname) #NmapParse module is opening the XML file
+		return NmapParser.parse_fromfile(xml_path) #NmapParse module is opening the XML file
 	except:
-		print ("Error with nmap XML format")
+		print ("Error with nmap XML format in file: %s" % xml_path)
 		return ERROR_STRING
 
+# convert nmap xml output to json object for payload
+def parse_nmap_output(private_xml_path, public_xml_path):
+
+	#read in nmap scan from xml file with NmapParser from libnmap library
+	scan = libnmap_parse_XML(private_xml_path)
 
 	#global Report dict
 	Report = {}
 	Report['Devices'] = []
 
 	### host information (Device)
-	for _host in report.hosts:
+	for _host in scan.hosts:
 
 		Device = {
 			'Vulnerability_Score' : default_value(int),
@@ -300,47 +302,7 @@ def xmlf_to_payload(xml_fname):
 """
 									run program
 """
-server_list = ['http://ip.dnsexit.com',
-							'http://ifconfig.me/ip',
-							'http://ipecho.net/plain',
-							'http://checkip.dyndns.org/plain',
-							'http://whatismyipaddress.com/',
-							'http://websiteipaddress.com/WhatIsMyIp',
-							'http://getmyipaddress.org/',
-							'http://www.my-ip-address.net/',
-							'http://myexternalip.com/raw',
-							'http://www.canyouseeme.org/',
-							'http://www.trackip.net/',
-							'http://icanhazip.com/',
-							'http://www.iplocation.net/',
-							'http://www.howtofindmyipaddress.com/',
-							'http://www.ipchicken.com/',
-							'http://whatsmyip.net/',
-							'http://www.ip-adress.com/',
-							'http://checkmyip.com/',
-							'http://www.tracemyip.org/',
-							'http://www.lawrencegoetz.com/programs/ipinfo/',
-							'http://www.findmyip.co/',
-							'http://ip-lookup.net/',
-							'http://www.dslreports.com/whois',
-							'http://www.mon-ip.com/en/my-ip/',
-							'http://www.myip.ru',
-							'http://ipgoat.com/',
-							'http://www.myipnumber.com/my-ip-address.asp',
-							'http://www.whatsmyipaddress.net/',
-							'http://formyip.com/',
-							'https://check.torproject.org/',
-							'http://www.displaymyip.com/',
-							'http://www.bobborst.com/tools/whatsmyip/',
-							'http://checkip.dyndns.com/',
-							'http://myexternalip.com/',
-							'http://www.ip-adress.eu/',
-							'http://www.infosniper.net/',
-							'https://wtfismyip.com/text',
-							'http://ipinfo.io/',
-							'http://httpbin.org/ip',
-							'https://diagnostic.opendns.com/myip']
 
 if __name__ == "__main__":
-	print(xmlf_to_payload("../example.xml"))
+	print(parse_nmap_output("../example.xml", None))
 	print(get_public_ip())
