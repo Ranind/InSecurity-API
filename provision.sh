@@ -8,7 +8,7 @@ DEFAULT_SITE_PATH="/etc/apache2/sites-enabled/000-default.conf"
 # Path to code (will by symlinked into web root)
 SHARE_ROOT=$1
 
-# Password for database server
+# Password for database server (root)
 PASSWORD="$2"
 
 # Mode for server configuration
@@ -17,6 +17,13 @@ MODE=$3
 # Constants defining the different modes
 DEV_MODE="DEV"
 PRODUCTION_MODE="PRODUCTION"
+
+# Password for api database user (accept commandline param or default to password for devmode)
+if [ $MODE = $DEV_MODE ]; then
+    API_USER_PASSWORD="$PASSWORD"
+else
+    API_USER_PASSWORD="$4"
+fi
 
 # Switch to root
 sudo su
@@ -118,18 +125,21 @@ a2enmod rewrite
 # Restart Apache2
 service apache2 restart
 
-################################################## PRODUCTION CONFIG ##################################################
+################################################## MYSQL CONFIG ##################################################
 
 
 if [ $MODE = $PRODUCTION_MODE ]; then
-
     # Remove debug signal
     rm "$API_WEB_ROOT/debug_mode"
 
-    # Prompt administrator for production password config
-    echo -n "Production Password:"
-    read -s PRODUCTION_PASSWORD
-    echo
-
-    bash $API_WEB_ROOT/cred_config.sh $PRODUCTION_PASSWORD
+    # Modifies the passwords in source code of core.php and scanner.py
+    bash $API_WEB_ROOT/cred_config.sh $API_USER_PASSWORD
 fi
+
+# Create API user in db
+mysql -u root -p$PASSWORD InSecurity <<EOF
+CREATE USER 'api'@'localhost' IDENTIFIED BY '$API_USER_PASSWORD';
+GRANT SELECT ON InSecurity.* TO 'api'@'localhost';
+GRANT UPDATE ON InSecurity.* TO 'api'@'localhost';
+GRANT INSERT ON InSecurity.* TO 'api'@'localhost';
+EOF

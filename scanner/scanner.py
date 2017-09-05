@@ -1,7 +1,7 @@
 import sys
 import MySQLdb
 
-db_connection = MySQLdb.connect(host='localhost', user='scanner', passwd='password', db='InSecurity')
+db_connection = MySQLdb.connect(host='localhost', user='api', passwd='password', db='InSecurity')
 data = []
 scan_id = int(sys.argv[1])
 public_ip = None
