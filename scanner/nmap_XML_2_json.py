@@ -13,6 +13,7 @@ from libnmap.parser import NmapParser
 from xml.parsers import expat
 import urllib.request
 import re
+import math
 
 def default_value(value_type):
 	if value_type == str:
@@ -25,7 +26,6 @@ def default_value(value_type):
 		return ""
 
 	print("type not found:%s" % str(value_type))
-
 
 def return_json_value(obj, expected_type):
 	global default_value
@@ -50,6 +50,11 @@ def write_json(fname, dict):
 
 	with open(fname, 'w') as dump:
 		json.dump(dict, dump, indent=2)
+
+def read_json(fname):
+	with open(fname) as f:    
+	    data = json.load(f)
+	return data
 
 def get_public_ip():
 	urls = ['http://ip.dnsexit.com',
@@ -255,7 +260,7 @@ def libnmap_host_2_device_schema(_host):
 	# host CVE list
 	#
 	for c in Device['host_CPE_list']:
-		Device['host_CVE_list'].append(CPE_to_dict_CVE_list(c['cpeString']))
+		Device['host_CVE_list'].extend(CPE_to_dict_CVE_list(c['cpeString']))
 
 	#
 	#	Services
@@ -301,7 +306,7 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 	#
 	scan = libnmap_parse_XML(private_xml_path)
 
-	### host information (Device)
+	### host information (Report.Devices)
 	for _host in scan.hosts:
 		Device = libnmap_host_2_device_schema(_host)
 		Report['Devices'].append(Device)
@@ -311,12 +316,121 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 	#
 	scan = libnmap_parse_XML(public_xml_path)
 
-	### router information
+	### router information (Report.Router)
 	_router = scan.hosts[0]
 	Router = libnmap_host_2_device_schema(_router)
 	Router['publicIP'] = get_public_ip()
 	Report['Router'] = Router
 
+def device_vulnerability_score(cvsss, number_open_filtered_ports):
+	w = 70.0
+	k = 5	#scaler for open services
+	v = sum(cvsss)
+	p = number_open_filtered_ports
+
+	fv = 0
+	if v > 0: fv = math.log(v)
+
+	gv = 0
+	if p > 0: gv = k*math.log(p)
+
+	score = w / (w + fv + gv)
+
+	return score
+
+def network_vulnerability_score(router_score, device_scores, number_of_devices):
+	r = router_score
+	d = device_scores
+	n = number_of_devices
+	w = 15 #weight of router compared to a single device
+
+	if n != 0:
+		return ((w*r + n*(sum(d)))/(w + n))*100
+	return r*100
+
+def grade(percentage):
+	#A: 90-100
+	#B: 80-89
+	#C: 70-79
+	#D: 60-69
+	#F: <60
+
+	if percentage > 90:
+	    return "A"
+	elif 80 <= percentage < 90:
+	    return "B"
+	elif 70 <= percentage < 80:
+	    return "B"
+	elif 60 <= percentage < 70:
+	    return "C"
+	else:
+	    return "F"
+
+
+# extract list of device cvss scores
+def calc_vuln_scores_grade():
+	global Report
+
+	#
+	# Device vulnerability Scores
+	#
+
+	device_scores = []
+	for d in Report['Devices']:
+		device_cvsss = []
+		number_of_services = 0
+
+		for cve in d['host_CVE_list']:
+			if type(cve) == dict:
+				device_cvsss.append(cve['CVSS_Severity'])
+
+		for service in d['Services']:
+			for cve in service['service_CVE_list']:
+				if type(cve) == dict:
+					device_cvsss.append(cve['CVSS_Severity'])
+			number_of_services += 1
+
+		device_score = device_vulnerability_score(device_cvsss, number_of_services)
+
+		# set Device 'Vulnerability_Score' in Report
+		d['Vulnerability_Score'] = device_score
+
+		device_scores.append(device_score)
+
+
+	#
+	#	Router vulnerability Score
+	#
+
+	router_cvsss = []
+	number_of_services = 0
+
+	for cve in Report['Router']['host_CVE_list']:
+		if type(cve) == dict:
+			router_cvsss.append(cve['CVSS_Severity'])
+
+	for service in Report['Router']['Services']:
+		for cve in service['service_CVE_list']:
+			if type(cve) == dict:
+				router_cvsss.append(cve['CVSS_Severity'])
+		number_of_services += 1
+
+	router_score = device_vulnerability_score(router_cvsss, number_of_services)
+
+	# set Router 'Vulnerability_Score' in Report
+	Report['Router']['Vulnerability_Score'] = router_score
+
+
+	#
+	#	Network vulnerability Score
+	#
+
+	network_score = network_vulnerability_score(router_score, device_scores, len(Report['Devices']))
+	network_grade = grade(network_score)
+
+	# set Network 'Vulnerability_Score' and Vulnerability_Grade' in Report
+	Report['Vulnerability_Score'] = network_score
+	Report['Vulnerability_Grade'] = network_grade
 
 """
 									run program
@@ -351,8 +465,18 @@ if __name__ == "__main__":
 	global PRIVATE_XMLF_PATH
 
 	#*temporary*
-	public_ip = get_public_ip()
-	run_nmap_cmd('-A %s' % public_ip, PUBLIC_XMLF_PATH)
+	#public_ip = get_public_ip()
+	#run_nmap_cmd('-A %s' % public_ip, PUBLIC_XMLF_PATH)
 
-	parse_nmap_output(PRIVATE_XMLF_PATH, PUBLIC_XMLF_PATH)
-	print(Report)
+	#parse_nmap_output(PRIVATE_XMLF_PATH, PUBLIC_XMLF_PATH)
+
+	#*temporary*
+	#write_json('../stage2_json.json', Report)
+	Report = read_json('../stage2_json.json')
+
+	calc_vuln_scores_grade()
+
+
+
+
+
