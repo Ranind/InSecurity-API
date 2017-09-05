@@ -54,6 +54,9 @@ $container['db'] = function ($c) {
     return $pdo;
 };
 
+# Middleware to easily capture request ip address
+$app->add(new RKA\Middleware\IpAddress(false));
+
 
 $app->get('/', function(Request $request, Response $response) {
     return $response->withRedirect('http://docs.insecurityapi.apiary.io/');
@@ -63,6 +66,46 @@ $app->get('/', function(Request $request, Response $response) {
 $app->group('/Scanner', function () use ($app) {
 
     $app->post('/Scan', function(Request $request, Response $response) {
+
+        $data = $request->getParsedBody();
+
+        // Validate request
+        if( isset($data['scanType'])
+            &&
+            (
+                $data['scanType'] == 'Complete'
+                ||
+                $data['scanType'] == 'Discovery'
+                ||
+                $data['scanType'] == 'Vulnerability'
+                ||
+                ($data['scanType'] == 'Targeted' && isset($data['devices']) && is_array($data['devices']))
+            )
+        ) {
+            // Create new scan entry in db
+            $stmt = $this->db->prepare('INSERT INTO `Scan` (`scanType`, `creator`) VALUES (:scanType, creator);');
+            $stmt->execute([
+                ':scanType' => $data['scanType'],
+                ':status' => $request->getAttribute('ip_address')
+            ]);
+
+            // TODO: Insert into devices table for targeted scans (if supported at a later date)
+
+            // Fire and forget scanner
+            $cmd = 'python3 ' . __DIR__ . '/scanner/scanner.py ' . $this->db->lastInsertId();
+            system("$cmd 2>&1 | while IFS= read -r line; do echo \"\$(date -u) \$line\"; done >> " . __DIR__ . '/logs/scanner.log');
+
+            // Inform user the request has been successfully created
+        }
+        else {
+            // If type is Targeted, error caused by missing devices, otherwise it must be an invalid scan type
+            if($data['scanType'] == 'Targeted')
+                $err_msg = 'Targeted Scans require a list of device ips';
+            else
+                $err_msg = 'Invalid Scan Type';
+
+            return $response->withJson($err_msg, 400);
+        }
 
     })->setName('scan');
 
@@ -97,7 +140,7 @@ $app->post('/update/{project}', function (Request $request, Response $response, 
     $cmd = escapeshellcmd(__DIR__ . '/get_updates.sh ' . $request->getAttribute('project'));
 
     // Run the command and log output with timestamps
-    system("$cmd 2>&1 | while IFS= read -r line; do echo \"\$(date -u) \$line\"; done >> " . __DIR__ . "/logs/update.log");
+    system("$cmd 2>&1 | while IFS= read -r line; do echo \"\$(date -u) \$line\"; done >> " . __DIR__ . '/logs/update.log');
 
 })->setName('update');
 
