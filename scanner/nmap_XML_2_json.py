@@ -12,11 +12,7 @@ import json
 from libnmap.parser import NmapParser
 from xml.parsers import expat
 import urllib.request
-
 import re
-
-#settings
-ERROR_STRING = "ERROR"
 
 def default_value(value_type):
 	if value_type == str:
@@ -211,6 +207,19 @@ def CPE_object_to_dict(libnmap_CPE_obj):
 
 	return service_CPE_list
 
+# *temporary method*
+# run nmap command and output to xml file
+def run_nmap_cmd(nmap_cmd, output_xml_path):
+	global ERROR_STRING
+	try:
+		#run scan
+		os.system('sudo nmap ' + nmap_cmd + ' -oX ' + output_xml_path)
+	except: 
+		print (sys.exc_info()[0])
+		print ("error: f:nmap_XML_json.py: failed to run nmap_command")
+		return ERROR_STRING
+
+#read in nmap scan from xml file with NmapParser from libnmap library
 def libnmap_parse_XML(xml_path):
 	global ERROR_STRING
 	try:
@@ -220,89 +229,130 @@ def libnmap_parse_XML(xml_path):
 		print ("Error with nmap XML format in file: %s" % xml_path)
 		return ERROR_STRING
 
+def libnmap_host_2_device_schema(_host):
+	Device = {
+		'Vulnerability_Score' : default_value(int),
+		'IP' : return_json_value(_host.ipv4, str), 			#_host.ipv6 
+		'MAC_Address' :  return_json_value(_host.mac,str),
+		'Vendor' : return_json_value(_host.vendor,str),
+		'host_CPE_list' : [], 								#fill bellow
+		'host_CVE_list' : [],								#fill bellow
+		'Services' : [],									#fill bellow
+		'Identification_Accuracy' : default_value(int)		#fill bellow
+
+	}
+
+	#
+	# host CPE list
+	#
+	host_cpe_list = []
+	for c in _host.os_match_probabilities():
+		host_cpe_list.extend(c.get_cpe())
+	host_cpe_list = list(set(host_cpe_list))
+	Device['host_CPE_list'] = [CPE_object_to_dict(c) for c in host_cpe_list]
+
+	#
+	# host CVE list
+	#
+	for c in Device['host_CPE_list']:
+		Device['host_CVE_list'].append(CPE_to_dict_CVE_list(c['cpeString']))
+
+	#
+	#	Services
+	#
+	for s in _host.services:
+
+		Service={
+			'port': return_json_value(s.port,int), 
+			'banner': return_json_value(s.banner,str), 
+			'protocol':return_json_value(s.protocol, str), 
+			'name': return_json_value(s.service, str),
+			'state': return_json_value(s.state,str),
+			'reason': return_json_value(s.reason,str),
+			'service_CPE_list': [],
+			'service_CVE_list': []
+		}
+
+		if s.cpelist:
+			#
+			# serivce CPE list
+			#
+			for c in s.cpelist:
+				Service['service_CPE_list'].append(CPE_object_to_dict(c))
+
+			#
+			# serivce CVE list
+			#
+			for c in Service['service_CPE_list']:
+				Service['service_CVE_list'].extend(CPE_to_dict_CVE_list(c['cpeString']))
+
+		Device['Services'].append(Service)
+
+	return Device
+
 # convert nmap xml output to json object for payload
 def parse_nmap_output(private_xml_path, public_xml_path):
 
-	#read in nmap scan from xml file with NmapParser from libnmap library
-	scan = libnmap_parse_XML(private_xml_path)
+	# Update global python dict, "Report"
+	global Report
 
-	#global Report dict
-	Report = {}
-	Report['Devices'] = []
+	#
+	# private nmap scan parsing
+	#
+	scan = libnmap_parse_XML(private_xml_path)
 
 	### host information (Device)
 	for _host in scan.hosts:
-
-		Device = {
-			'Vulnerability_Score' : default_value(int),
-			'IP' : return_json_value(_host.ipv4, str), 			#_host.ipv6 
-			'MAC_Address' :  return_json_value(_host.mac,str),
-			'Vendor' : return_json_value(_host.vendor,str),
-			'host_CPE_list' : [], 								#fill bellow
-			'host_CVE_list' : [],								#fill bellow
-			'Services' : [],									#fill bellow
-			'Identification_Accuracy' : default_value(int)		#fill bellow
-
-		}
-
-		#
-		# host CPE list
-		#
-		host_cpe_list = []
-		for c in _host.os_match_probabilities():
-			host_cpe_list.extend(c.get_cpe())
-		host_cpe_list = list(set(host_cpe_list))
-		Device['host_CPE_list'] = [CPE_object_to_dict(c) for c in host_cpe_list]
-
-
-		#
-		# host CVE list
-		#
-		for c in Device['host_CPE_list']:
-			Device['host_CVE_list'].append(CPE_to_dict_CVE_list(c['cpeString']))
-
-		#
-		#	Services
-		#
-		for s in _host.services:
-
-			Service={
-				'port': return_json_value(s.port,int), 
-				'banner': return_json_value(s.banner,str), 
-				'protocol':return_json_value(s.protocol, str), 
-				'name': return_json_value(s.service, str),
-				'state': return_json_value(s.state,str),
-				'reason': return_json_value(s.reason,str),
-				'service_CPE_list': [],
-				'service_CVE_list': []
-			}
-
-			if s.cpelist:
-				#
-				# serivce CPE list
-				#
-				for c in s.cpelist:
-					Service['service_CPE_list'].append(CPE_object_to_dict(c))
-
-				#
-				# serivce CVE list
-				#
-				for c in Service['service_CPE_list']:
-					Service['service_CVE_list'].extend(CPE_to_dict_CVE_list(c['cpeString']))
-
-
-			Device['Services'].append(Service)
-	
+		Device = libnmap_host_2_device_schema(_host)
 		Report['Devices'].append(Device)
 
-	return Report 
+	#
+	# public nmap scan parsing
+	#
+	scan = libnmap_parse_XML(public_xml_path)
 
+	### router information
+	_router = scan.hosts[0]
+	Router = libnmap_host_2_device_schema(_router)
+	Router['publicIP'] = get_public_ip()
+	Report['Router'] = Router
 
 
 """
 									run program
 """
 
+#
+# settings
+#
+
+ERROR_STRING = "ERROR"
+
+#
+# global variables
+#
+
+Report = {
+	'scanType' : default_value(str),
+	'Vulnerability_Score' : default_value(str),
+	'Vulnerability_Grade' : default_value(str),
+	'Wireless_Security_Protocols' : [],
+	'Router' : {},
+	'Devices' : []
+}
+
+PUBLIC_XMLF_PATH = '../public_example.xml'
+PRIVATE_XMLF_PATH = '../example.xml'
+
+
 if __name__ == "__main__":
-	print(parse_nmap_output("../example.xml", None))
-	print(get_public_ip())
+	global Report
+	global PUBLIC_XMLF_PATH
+	global PRIVATE_XMLF_PATH
+
+	#*temporary*
+	public_ip = get_public_ip()
+	run_nmap_cmd('-A %s' % public_ip, PUBLIC_XMLF_PATH)
+
+	parse_nmap_output(PRIVATE_XMLF_PATH, PUBLIC_XMLF_PATH)
+	print(Report)
