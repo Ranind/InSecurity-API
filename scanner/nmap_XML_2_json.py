@@ -15,6 +15,12 @@ import urllib.request
 import re
 import math
 
+#
+#
+#	Usefull Methods
+#
+#
+
 def default_value(value_type):
 	if value_type == str:
 		return ""
@@ -55,6 +61,55 @@ def read_json(fname):
 	with open(fname) as f:    
 	    data = json.load(f)
 	return data
+
+def fetch(url, error_msg, is_json=True):
+	request = urllib.request.Request(url)
+	request.add_header('Version', '1.1')
+	request.add_header('Accept',  '*/json')
+	request.add_header('User-agent',
+						  "Mozilla/5.0 (X11; Linux x86_64; rv:24.0) Gecko/20100101 Firefox/24.0")
+
+	response = urllib.request.urlopen(request)
+
+	if is_json:
+		try:
+			content = json.loads(response.read().decode("utf-8"))
+			if content.get("status") != "success":
+				raise Exception()
+		except Exception as e:
+			print (e)
+			raise Exception(error_msg)
+
+		return content.get("data")
+
+	else: 
+
+		content = response.read()
+
+		try:
+			content = content.decode('UTF-8')
+		except UnicodeDecodeError:
+			content = content.decode('ISO-8859-1')
+
+		return content
+
+# *temporary method*
+# run nmap command and output to xml file
+def run_nmap_cmd(nmap_cmd, output_xml_path):
+	global ERROR_STRING
+	try:
+		#run scan
+		os.system('sudo nmap ' + nmap_cmd + ' -oX ' + output_xml_path)
+	except: 
+		print (sys.exc_info()[0])
+		print ("error: f:nmap_XML_json.py: failed to run nmap_command")
+		return ERROR_STRING
+
+#
+#
+#	Get Public IP Methods
+#
+#
 
 def get_public_ip():
 	urls = ['http://ip.dnsexit.com',
@@ -118,36 +173,21 @@ def extract_ip_from_response(response):
 	except Exception:
 		return ''
 
-def fetch(url, error_msg, is_json=True):
-	request = urllib.request.Request(url)
-	request.add_header('Version', '1.1')
-	request.add_header('Accept',  '*/json')
-	request.add_header('User-agent',
-						  "Mozilla/5.0 (X11; Linux x86_64; rv:24.0) Gecko/20100101 Firefox/24.0")
+#
+#
+#	parse_nmap_output Methods
+#
+#
 
-	response = urllib.request.urlopen(request)
-
-	if is_json:
-		try:
-			content = json.loads(response.read().decode("utf-8"))
-			if content.get("status") != "success":
-				raise Exception()
-		except Exception as e:
-			print (e)
-			raise Exception(error_msg)
-
-		return content.get("data")
-
-	else: 
-
-		content = response.read()
-
-		try:
-			content = content.decode('UTF-8')
-		except UnicodeDecodeError:
-			content = content.decode('ISO-8859-1')
-
-		return content
+#read in nmap scan from xml file with NmapParser from libnmap library
+def libnmap_parse_XML(xml_path):
+	global ERROR_STRING
+	try:
+		#parse data
+		return NmapParser.parse_fromfile(xml_path) #NmapParse module is opening the XML file
+	except:
+		print ("Error with nmap XML format in file: %s" % xml_path)
+		return ERROR_STRING
 
 def CPE_to_dict_CVE_list(CPE_string):
 	dest_port = 443
@@ -211,28 +251,6 @@ def CPE_object_to_dict(libnmap_CPE_obj):
 		service_CPE_list['isOperatingSystem'] = return_json_value(libnmap_CPE_obj.is_operating_system, bool)	
 
 	return service_CPE_list
-
-# *temporary method*
-# run nmap command and output to xml file
-def run_nmap_cmd(nmap_cmd, output_xml_path):
-	global ERROR_STRING
-	try:
-		#run scan
-		os.system('sudo nmap ' + nmap_cmd + ' -oX ' + output_xml_path)
-	except: 
-		print (sys.exc_info()[0])
-		print ("error: f:nmap_XML_json.py: failed to run nmap_command")
-		return ERROR_STRING
-
-#read in nmap scan from xml file with NmapParser from libnmap library
-def libnmap_parse_XML(xml_path):
-	global ERROR_STRING
-	try:
-		#parse data
-		return NmapParser.parse_fromfile(xml_path) #NmapParse module is opening the XML file
-	except:
-		print ("Error with nmap XML format in file: %s" % xml_path)
-		return ERROR_STRING
 
 def libnmap_host_2_device_schema(_host):
 	Device = {
@@ -322,6 +340,12 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 	Router['publicIP'] = get_public_ip()
 	Report['Router'] = Router
 
+#
+#
+#	Calculate Vulnerability Score And Grade Methods
+#
+#
+
 def device_vulnerability_score(cvsss, number_open_filtered_ports):
 	w = 70.0
 	k = 5	#scaler for open services
@@ -410,7 +434,6 @@ def calc_vuln_scores_grade():
 	#
 	#	Network vulnerability Score
 	#
-
 	network_score = network_vulnerability_score(router_score, device_scores, len(Report['Devices']))
 	network_grade = grade(network_score)
 
@@ -418,11 +441,9 @@ def calc_vuln_scores_grade():
 	Report['Vulnerability_Score'] = network_score
 	Report['Vulnerability_Grade'] = network_grade
 
-
 	#*temporary*
 	print("Router: %f" % router_score)
 	print("Devices: " + str(device_scores))
-
 	print ("Vulnerability_Score: %f" % Report['Vulnerability_Score'])
 	print ("Vulnerability_Grade: %s" % Report['Vulnerability_Grade'])
 
