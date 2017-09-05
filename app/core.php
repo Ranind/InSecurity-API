@@ -89,13 +89,16 @@ $app->group('/Scanner', function () use ($app) {
                 ':status' => $request->getAttribute('ip_address')
             ]);
 
+            $scan_id = $this->db->lastInsertId();
+
             // TODO: Insert into devices table for targeted scans (if supported at a later date)
 
             // Fire and forget scanner
-            $cmd = 'python3 ' . __DIR__ . '/scanner/scanner.py ' . $this->db->lastInsertId();
+            $cmd = 'python3 ' . __DIR__ . '/scanner/scanner.py ' . $scan_id;
             system("$cmd 2>&1 | while IFS= read -r line; do echo \"\$(date -u) \$line\"; done >> " . __DIR__ . '/logs/scanner.log');
 
             // Inform user the request has been successfully created
+            return $response->withJson(['id' => $scan_id], 201);
         }
         else {
             // If type is Targeted, error caused by missing devices, otherwise it must be an invalid scan type
