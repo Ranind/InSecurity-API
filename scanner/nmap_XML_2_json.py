@@ -59,7 +59,7 @@ def write_json(fname, dict):
 
 def read_json(fname):
 	with open(fname) as f:    
-	    data = json.load(f)
+		data = json.load(f)
 	return data
 
 def fetch(url, error_msg, is_json=True):
@@ -92,6 +92,12 @@ def fetch(url, error_msg, is_json=True):
 			content = content.decode('ISO-8859-1')
 
 		return content
+
+#
+#
+#	run_nmap Methods
+#
+#
 
 # *temporary method*
 # run nmap command and output to xml file
@@ -175,19 +181,9 @@ def extract_ip_from_response(response):
 
 #
 #
-#	parse_nmap_output Methods
+#	get_cves Methods
 #
 #
-
-#read in nmap scan from xml file with NmapParser from libnmap library
-def libnmap_parse_XML(xml_path):
-	global ERROR_STRING
-	try:
-		#parse data
-		return NmapParser.parse_fromfile(xml_path) #NmapParse module is opening the XML file
-	except:
-		print ("Error with nmap XML format in file: %s" % xml_path)
-		return ERROR_STRING
 
 def CPE_to_dict_CVE_list(CPE_string):
 	dest_port = 443
@@ -208,6 +204,62 @@ def CPE_to_dict_CVE_list(CPE_string):
 		CVE_list.append(CVE)
 
 	return CVE_list
+
+def get_cves():
+	global Report
+
+	#
+	# Device CVEs
+	#
+	for Device in Report['Devices']:
+		#
+		# host CVE list
+		#
+		for CPE in Device['host_CPE_list']:
+			Device['host_CVE_list'].extend(CPE_to_dict_CVE_list(CPE['cpeString']))
+
+		#
+		#	Services
+		#
+		for Service in Device['Services']:
+			#
+			# serivce CVE list
+			#
+			for CPE in Service['service_CPE_list']:
+				Service['service_CVE_list'].extend(CPE_to_dict_CVE_list(CPE['cpeString']))
+	#
+	#	Router CVEs
+	#
+	# in router : host CVE list
+	for CPE in Report['Router']['host_CPE_list']:
+		Report['Router']['host_CVE_list'].extend(CPE_to_dict_CVE_list(CPE['cpeString']))
+
+		#
+		#	Router Services
+		#
+		for Service in Report['Router']['Services']:
+			#
+			# serivce CVE list
+			#
+			for CPE in Service['service_CPE_list']:
+				Service['service_CVE_list'].extend(CPE_to_dict_CVE_list(CPE['cpeString']))
+
+#
+#
+#	parse_nmap_output Methods
+#
+#
+
+#read in nmap scan from xml file with NmapParser from libnmap library
+def libnmap_parse_XML(xml_path):
+	global ERROR_STRING
+	try:
+		#parse data
+		return NmapParser.parse_fromfile(xml_path) #NmapParse module is opening the XML file
+	except Exception as e:
+		print (e)
+		print ("Error with nmap XML format in file: %s" % xml_path)
+		return ERROR_STRING
 
 #libnmap.object.cpe
 def CPE_object_to_dict(libnmap_CPE_obj):
@@ -274,11 +326,13 @@ def libnmap_host_2_device_schema(_host):
 	host_cpe_list = list(set(host_cpe_list))
 	Device['host_CPE_list'] = [CPE_object_to_dict(c) for c in host_cpe_list]
 
+	"""
 	#
 	# host CVE list
 	#
 	for c in Device['host_CPE_list']:
 		Device['host_CVE_list'].extend(CPE_to_dict_CVE_list(c['cpeString']))
+	"""
 
 	#
 	#	Services
@@ -303,11 +357,13 @@ def libnmap_host_2_device_schema(_host):
 			for c in s.cpelist:
 				Service['service_CPE_list'].append(CPE_object_to_dict(c))
 
+			"""
 			#
 			# serivce CVE list
 			#
 			for c in Service['service_CPE_list']:
 				Service['service_CVE_list'].extend(CPE_to_dict_CVE_list(c['cpeString']))
+			"""
 
 		Device['Services'].append(Service)
 
@@ -380,15 +436,15 @@ def grade(percentage):
 	#F: <60
 
 	if percentage > 90:
-	    return "A"
+		return "A"
 	elif 80 <= percentage < 90:
-	    return "B"
+		return "B"
 	elif 70 <= percentage < 80:
-	    return "B"
+		return "B"
 	elif 60 <= percentage < 70:
-	    return "C"
+		return "C"
 	else:
-	    return "F"
+		return "F"
 
 def cal_device_vuln_score(device):
 		device_cvsss = []
@@ -447,6 +503,29 @@ def calc_vuln_scores_grade():
 	print ("Vulnerability_Score: %f" % Report['Vulnerability_Score'])
 	print ("Vulnerability_Grade: %s" % Report['Vulnerability_Grade'])
 
+
+#
+#
+#	get_gateway Method
+#
+#
+
+"""
+#untested stackoverflow code!
+import socket, struct
+
+#Read the default gateway directly from /proc
+def get_gateway():
+	with open("/proc/net/route") as f:
+		for line in f:
+			fields = line.strip().split()
+			if fields[1] != '00000000' or not int(fields[3], 16) & 2:
+				continue
+
+			return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+"""
+
+
 """
 									run program
 """
@@ -473,21 +552,21 @@ Report = {
 PUBLIC_XMLF_PATH = '../public_example.xml'
 PRIVATE_XMLF_PATH = '../private_example.xml'
 
-
 if __name__ == "__main__":
 	global Report
 	global PUBLIC_XMLF_PATH
 	global PRIVATE_XMLF_PATH
 
 	#*temporary*
-	#run_nmap_cmd('-A 192.168.0.1/24', PRIVATE_XMLF_PATH)
+	#run_nmap_cmd('-A 192.168.0.0-2', PRIVATE_XMLF_PATH)
 	#public_ip = get_public_ip()
 	#run_nmap_cmd('-A %s' % public_ip, PUBLIC_XMLF_PATH)
 
-	#parse_nmap_output(PRIVATE_XMLF_PATH, PUBLIC_XMLF_PATH)
+	parse_nmap_output(PRIVATE_XMLF_PATH, PUBLIC_XMLF_PATH)
+	get_cves()
 
 	#*temporary*
-	#write_json('../stage2_json.json', Report)
+	write_json('../stage2_json.json', Report)
 	Report = read_json('../stage2_json.json')
 
 	#*temporary*
