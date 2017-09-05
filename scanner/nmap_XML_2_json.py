@@ -555,10 +555,6 @@ PUBLIC_XMLF_PATH = '../public_example.xml'
 PRIVATE_XMLF_PATH = '../private_example.xml'
 
 if __name__ == "__main__":
-	global Report
-	global PUBLIC_XMLF_PATH
-	global PRIVATE_XMLF_PATH
-
 	#*temporary*
 	#run_nmap_cmd('-A 192.168.0.0-2', PRIVATE_XMLF_PATH)
 	#public_ip = get_public_ip()
