@@ -22,8 +22,25 @@ incremental_progress = 0
 
 
 def run_nmap(args, scan):
+    """
+    nmap_args - list of args to give nmap
+
+    Return temp XML file paths
+    """
     log_activity('\tScanning ' + scan + ' network')
-    return '/path/to/output'
+
+    xml_path = 'nmap_results_%s_%s.xml' % (scan, scan_id)
+    nmap_cmd = ['nmap'] + args + ['-oX', xml_path]
+    nmap = subprocess.Popen(nmap_cmd, stdout=subprocess.PIPE)
+
+    while True:
+        # TODO: parse this for progress
+        line = nmap.stdout.readline()
+        if not line:
+            break
+
+    xml_abs_path = os.path.abspath(xml_path)
+    return xml_abs_path
 
 
 def parse_nmap_output(private_path, public_path):
@@ -77,7 +94,7 @@ def main():
     # Scan the network and parse the results
     log_activity('Starting scan (ID = ' + scan_id + '):')
     # TODO: Pass proper arguments
-    parse_nmap_output(run_nmap([]), run_nmap([]))
+    parse_nmap_output(run_nmap([], 'public',), run_nmap([], 'private'))
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
