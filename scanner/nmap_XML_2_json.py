@@ -345,7 +345,7 @@ def network_vulnerability_score(router_score, device_scores, number_of_devices):
 	w = 15 #weight of router compared to a single device
 
 	if n != 0:
-		return ((w*r + n*(sum(d)))/(w + n))*100
+		return ((w*r + sum(d))/(w + n))*100
 	return r*100
 
 def grade(percentage):
@@ -397,7 +397,6 @@ def calc_vuln_scores_grade():
 
 		device_scores.append(device_score)
 
-
 	#
 	#	Router vulnerability Score
 	#
@@ -420,6 +419,9 @@ def calc_vuln_scores_grade():
 	# set Router 'Vulnerability_Score' in Report
 	Report['Router']['Vulnerability_Score'] = router_score
 
+	#*temporary*
+	print("Router: %f" % router_score)
+	print("Devices: " + str(device_scores))
 
 	#
 	#	Network vulnerability Score
@@ -456,7 +458,7 @@ Report = {
 }
 
 PUBLIC_XMLF_PATH = '../public_example.xml'
-PRIVATE_XMLF_PATH = '../example.xml'
+PRIVATE_XMLF_PATH = '../private_example.xml'
 
 
 if __name__ == "__main__":
@@ -465,6 +467,7 @@ if __name__ == "__main__":
 	global PRIVATE_XMLF_PATH
 
 	#*temporary*
+	#run_nmap_cmd('-A 192.168.0.1/24', PRIVATE_XMLF_PATH)
 	#public_ip = get_public_ip()
 	#run_nmap_cmd('-A %s' % public_ip, PUBLIC_XMLF_PATH)
 
@@ -474,7 +477,12 @@ if __name__ == "__main__":
 	#write_json('../stage2_json.json', Report)
 	Report = read_json('../stage2_json.json')
 
+	#*temporary*
 	calc_vuln_scores_grade()
+
+	print (Report['Vulnerability_Score'])
+	print (Report['Vulnerability_Grade'])
+
 
 
 
