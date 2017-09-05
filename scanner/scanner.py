@@ -57,7 +57,14 @@ def create_report():
 
 
 def log_activity(log_string):
-    pass
+    global scan_id
+    global db_connection
+
+    c = db_connection.cursor()
+
+    c.execute("INSERT INTO ActivityLog (id, message) VALUES (%d, %s)", (scan_id, log_string))
+
+    print(log_string)
 
 
 def update_progress(job, subpercentage):
@@ -77,7 +84,7 @@ def main():
     # Scan the network and parse the results
     log_activity('Starting scan (ID = ' + scan_id + '):')
     # TODO: Pass proper arguments
-    parse_nmap_output(run_nmap([]), run_nmap([]))
+    parse_nmap_output(run_nmap([], 'private'), run_nmap([], 'public'))
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
