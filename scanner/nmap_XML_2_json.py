@@ -168,16 +168,18 @@ def get_public_ip():
 
 
 def extract_ip_from_response(response):
-	try:
-		regx = re.search(
-			'(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)',
-			response)
-		ip = regx.group(0)
-		if len(ip) > 0:
-			return ip
-		return ''
-	except Exception:
-		return ''
+    pattern = '(((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\.){3}' + \
+              '(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)'
+
+    try:
+        regx = re.search(pattern, response)
+        ip = regx.group(0)
+        if len(ip) > 0:
+            return ip
+            return ''
+    except Exception:
+        return ''
+
 
 #
 #
