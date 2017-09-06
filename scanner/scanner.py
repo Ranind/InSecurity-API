@@ -67,8 +67,25 @@ def log_activity(log_string):
     print(log_string)
 
 
-def update_progress(job, subpercentage):
-    pass
+def update_progress(job, job_percentage):
+    global progress_weights
+    global cumulative_progress
+    global incremental_progress
+    global scan_id
+
+    current_progress = int(progress_weights[job] * job_percentage + cumulative_progress)
+
+    # Percentage increased, update database to reflect current progress & update counter
+    if current_progress > incremental_progress:
+        c = db_connection.cursor()
+
+        c.execute("UPDATE Scan SET progress=%d WHERE id=%d;", (current_progress, scan_id))
+
+        incremental_progress = current_progress
+
+    # Job completed, update cumulative_progress
+    if sub_progress == 100:
+        cumulative_progress = incremental_progress
 
 
 def main():
