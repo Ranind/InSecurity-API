@@ -124,10 +124,9 @@ def get_public_ip():
 
 
 def parse_nmap_output(private_xml_path, public_xml_path):
-    log_activity('\tParsing scan output')
-
-    # Update global python dict, "Report"
     global data
+
+    log_activity('\tParsing scan output')
 
     # private nmap scan parsing
     scan = libnmap_parse_xml(private_xml_path)
@@ -176,9 +175,9 @@ def calc_vuln_scores_grades():
 
 
 def get_cves():
-    log_activity('\tFinding CVEs')
-
     global data
+
+    log_activity('\tFinding CVEs')
 
     # Device CVEs
     for Device in data['Devices']:
