@@ -6,17 +6,14 @@
 #
 #
 
-"""
-#untested stackoverflow code!
-import socket, struct
+import subprocess
 
-#Read the default gateway directly from /proc
 def get_gateway():
-    with open("/proc/net/route") as f:
-        for line in f:
-            fields = line.strip().split()
-            if fields[1] != '00000000' or not int(fields[3], 16) & 2:
-                    continue
-
-        return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-"""
+    """
+    Return the default gateway of the host calling this function
+    """
+    route = subprocess.Popen(['route', '-n'], stdout=subprocess.PIPE)
+    output = subprocess.check_output(['awk', 'FNR == 3 {print $2}'],
+            stdin=route.stdout)
+    route.wait()
+    return output.decode('UTF-8').rstrip()
