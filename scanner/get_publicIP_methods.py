@@ -11,6 +11,8 @@ from usefull_methods import *
 #
 
 def get_public_ip():
+    log_activity('\tDetermining public ip address')
+    
         urls = ['http://ip.dnsexit.com',
                 'http://ifconfig.me/ip',
                 'http://ipecho.net/plain',

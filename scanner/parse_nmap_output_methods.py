@@ -2,6 +2,7 @@
 
 from libnmap.parser import NmapParser
 #from xml.parsers import expat
+from usefull_methods import *
 
 #
 #
@@ -131,6 +132,7 @@ def libnmap_host_2_device_schema(_host):
 
 # convert nmap xml output to json object for payload
 def parse_nmap_output(private_xml_path, public_xml_path):
+    log_activity('\tParsing scan output')
 
     # Update global python dict, "Report"
     global Report

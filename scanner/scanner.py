@@ -50,25 +50,6 @@ def run_nmap(args, scan):
     return xml_abs_path
 
 
-def parse_nmap_output(private_path, public_path):
-    log_activity('\tParsing scan output')
-    pass
-
-
-def get_cves():
-    log_activity('\tFinding CVEs')
-    pass
-
-
-def calc_vuln_scores_grades():
-    log_activity('\tCalculating vulnerability scores and vulnerability grades')
-    pass
-
-
-def get_public_ip():
-    log_activity('\tDetermining public ip address')
-    return '127.0.0.1'
-
 
 def get_gateway():
     log_activity('\tDetermining gateway')
@@ -80,8 +61,9 @@ def create_report():
     return ''
 
 
-def log_activity(log_string):
-    pass
+#***moved to "usefull_methods.py"
+#def log_activity(log_string):
+#    pass
 
 
 def update_progress(job, subpercentage):

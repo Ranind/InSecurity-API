@@ -29,6 +29,8 @@ def CPE_to_dict_CVE_list(CPE_string):
     return CVE_list
 
 def get_cves():
+    log_activity('\tFinding CVEs')
+    
     global Report
 
     #

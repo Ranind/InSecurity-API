@@ -13,6 +13,9 @@ import json
 #
 #
 
+def log_activity(log_string):
+    pass
+
 def default_value(value_type):
     if value_type == str:
         return ""
