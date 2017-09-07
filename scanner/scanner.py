@@ -63,6 +63,19 @@ def get_gateway():
     return output.decode('UTF-8').rstrip()
 
 
+def get_network():
+    """
+    Return the network for this host in CIDR notation
+    """
+    log_activity('\tDetermining gateway')
+
+    route = subprocess.Popen(['ip', 'route', 'show'], stdout=subprocess.PIPE)
+    output = subprocess.check_output(['awk', 'FNR == 2 {print $1}'], stdin=route.stdout)
+    route.wait()
+
+    return output.decode('UTF-8').rstrip()
+
+
 def get_public_ip():
     log_activity('\tDetermining public ip address')
 
