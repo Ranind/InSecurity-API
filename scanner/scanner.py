@@ -250,7 +250,8 @@ def main():
     # Scan the network and parse the results
     log_activity('Starting scan (ID = ' + scan_id + '):')
     # TODO: Pass proper arguments
-    parse_nmap_output(run_nmap([], 'private'), run_nmap([], 'public'))
+    parse_nmap_output(run_nmap(['-T4', '-A', gateway_ip], 'private'),
+                      run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
