@@ -12,6 +12,7 @@ data = []
 scan_id = int(sys.argv[1])
 public_ip = None
 gateway_ip = None
+network = None
 
 # TODO: Determine appropriate weights
 progress_weights = {
@@ -259,11 +260,11 @@ def main():
     log_activity('Preparing for scan:')
     public_ip = get_public_ip()
     gateway_ip = get_gateway()
+    network = get_network()
 
     # Scan the network and parse the results
-    log_activity('Starting scan (ID = ' + scan_id + '):')
-    # TODO: Pass proper arguments
-    parse_nmap_output(run_nmap(['-T4', '-A', gateway_ip], 'private'),
+    log_activity('Starting scan (ID = %d):' % scan_id)
+    parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'),
                       run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
