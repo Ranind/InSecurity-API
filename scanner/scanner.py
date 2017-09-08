@@ -8,7 +8,7 @@ from get_cves_helpers import *
 from calc_vuln_scores_grades_helpers import *
 
 db_connection = MySQLdb.connect(host='localhost', user='api', passwd='password', db='InSecurity')
-data = []
+data = {}
 scan_id = int(sys.argv[1])
 public_ip = None
 gateway_ip = None
