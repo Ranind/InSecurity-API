@@ -1,6 +1,6 @@
 # python3
 
-from .shared_functions import *
+from shared_functions import *
 
 
 def cpe_to_dict_cve_list(cpe_string):

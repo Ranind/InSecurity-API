@@ -1,7 +1,7 @@
 # python3
 
 from libnmap.parser import NmapParser
-from .shared_functions import *
+from shared_functions import *
 
 
 def libnmap_parse_xml(xml_path):

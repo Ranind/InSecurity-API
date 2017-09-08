@@ -3,9 +3,9 @@ import MySQLdb
 import subprocess
 import re
 
-from .parse_nmap_helpers import *
-from .get_cves_helpers import *
-from .calc_vuln_scores_grades_helpers import *
+from parse_nmap_helpers import *
+from get_cves_helpers import *
+from calc_vuln_scores_grades_helpers import *
 
 db_connection = MySQLdb.connect(host='localhost', user='api', passwd='password', db='InSecurity')
 data = []
