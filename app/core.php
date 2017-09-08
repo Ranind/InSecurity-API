@@ -94,7 +94,7 @@ $app->group('/Scanner', function () use ($app) {
             // TODO: Insert into devices table for targeted scans (if supported at a later date)
 
             // Fire and forget scanner
-            $cmd = 'python3 ' . __DIR__ . '/scanner/scanner.py ' . $scan_id;
+            $cmd = 'python3 ' . __DIR__ . '/../scanner/scanner.py ' . $scan_id;
             system("$cmd 2>&1 | while IFS= read -r line; do echo \"\$(date -u) \$line\"; done >> " . __DIR__ . '/logs/scanner.log');
 
             // Inform user the request has been successfully created
