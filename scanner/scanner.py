@@ -242,7 +242,7 @@ def update_progress(job, job_percentage):
     if current_progress > incremental_progress:
         c = db_connection.cursor()
 
-        c.execute("UPDATE Scan SET progress=%d WHERE id=%d;", (current_progress, scan_id))
+        c.execute("UPDATE Scan SET progress=%s WHERE id=%s;", (current_progress, scan_id))
 
         incremental_progress = current_progress
 
