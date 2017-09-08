@@ -95,7 +95,7 @@ $app->group('/Scanner', function () use ($app) {
 
             // Fire and forget scanner
             $cmd = 'python3 ' . __DIR__ . '/../scanner/scanner.py ' . $scan_id;
-            $PID = trim(shell_exec("$cmd >> " . __DIR__ . '/logs/scanner.log 2>&1 /dev/null & echo $!'));
+            $PID = trim(shell_exec("$cmd >> " . __DIR__ . '/logs/scanner.log 2>&1 & echo $!'));
 
             // Inform user the request has been successfully created
             return $response->withJson(['id' => $scan_id], 201);
