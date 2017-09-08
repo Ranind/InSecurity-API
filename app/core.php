@@ -26,7 +26,7 @@ $config = ['settings' => [
     ],
     'db' => [
         'host' => 'localhost',
-        'dbname' => 'insecurity',
+        'dbname' => 'InSecurity',
         'user' => 'api',
         'pass' => 'password'
     ],
@@ -83,10 +83,10 @@ $app->group('/Scanner', function () use ($app) {
             )
         ) {
             // Create new scan entry in db
-            $stmt = $this->db->prepare('INSERT INTO `Scan` (`scanType`, `creator`) VALUES (:scanType, creator);');
+            $stmt = $this->db->prepare('INSERT INTO `Scan` (`scanType`, `creator`) VALUES (:scanType, :creator);');
             $stmt->execute([
                 ':scanType' => $data['scanType'],
-                ':status' => $request->getAttribute('ip_address')
+                ':creator' => $request->getAttribute('ip_address')
             ]);
 
             $scan_id = $this->db->lastInsertId();
