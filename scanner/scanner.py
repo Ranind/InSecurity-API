@@ -225,7 +225,7 @@ def log_activity(log_string):
 
     c = db_connection.cursor()
 
-    c.execute("INSERT INTO ActivityLog (id, message) VALUES (%d, %s)", (scan_id, log_string))
+    c.execute("INSERT INTO ActivityLog (id, message) VALUES (%s, %s)", (scan_id, log_string))
 
     print(log_string)
 
