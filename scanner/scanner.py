@@ -226,6 +226,7 @@ def log_activity(log_string):
     c = db_connection.cursor()
 
     c.execute("INSERT INTO ActivityLog (id, message) VALUES (%s, %s)", (scan_id, log_string))
+    db_connection.commit()
 
     print(log_string)
 
@@ -243,6 +244,7 @@ def update_progress(job, job_percentage):
         c = db_connection.cursor()
 
         c.execute("UPDATE Scan SET progress=%s WHERE id=%s;", (current_progress, scan_id))
+        db_connection.commit()
 
         incremental_progress = current_progress
 
