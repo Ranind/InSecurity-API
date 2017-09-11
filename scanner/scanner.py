@@ -3,6 +3,10 @@ import MySQLdb
 import subprocess
 import re
 
+#new
+import json
+import time
+
 from parse_nmap_helpers import *
 from get_cves_helpers import *
 from calc_vuln_scores_grades_helpers import *
@@ -213,10 +217,77 @@ def get_cves():
         for CPE in Service['service_CPE_list']:
             Service['service_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
 
+#new
+def consolidate_router_scans():
+	global data
+	global public_ip
+	global gateway_ip
+
+    # set router publicIP
+    data['Router']['publicIP'] = public_ip
+
+    # move router internal scan from device section of report to router section of report
+    for i, Device in enumerate(data['Devices']):
+
+    	# match
+    	if Device['IP'] == gateway_ip:
+    		 data['Router']['MAC_Address'] = Device['MAC_Address']
+    		 data['Router']['Vendor'] = Device['Vendor']
+
+	        # CPEs
+	        for CPE in Device['host_CPE_list']:
+	            Router['host_CPE_list'].extend(CPE)
+
+	        # CVEs
+	        for CVE in Device['host_CVE_list']:
+	            Router['host_CVE_list'].extend(CVE)
+
+	        # Services
+	        for Service in Device['Services']:
+	        	Router['Services'].extend(Service)
+
+	        # remove from device list
+			del data['Devices'][i]
+       		break
 
 def create_report():
+	#new
+	global data
+	global started
+	global scan_id
+	global db_connection
+
     log_activity('\tConverting data format')
-    return ''
+
+    c = db_connection.cursor()
+
+    #insert scan into database
+    """
+	CREATE TABLE Scan (
+	  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+	  scanType VARCHAR(13) NOT NULL,
+	  creator VARCHAR(15) NOT NULL,
+	  status VARCHAR(11) NOT NULL DEFAULT 'In-Progress',
+	  started DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	  completed DATETIME,
+	  progress TINYINT NOT NULL DEFAULT 0,
+	  report TEXT
+	);
+	"""
+    v_id = scan_id
+    v_scanType = data['scanType']
+    v_creator = 'f:scanner.py'			#unsure
+    v_status = 'Completed'
+    v_started = str(started)
+    v_completed = str(time.time())
+    v_progress = str(100)				#must be TINYINT
+    v_report = str(json.dumps(data))
+
+    c.execute("INSERT INTO Scan (id, scanType, creator, status, started, completed, progress, report) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
+    				(v_id, v_scanType, v_creator, v_status, v_started, v_completed, v_progress, v_report))
+    db_connection.commit()
+
+    #return ''	
 
 
 def log_activity(log_string):
@@ -257,6 +328,7 @@ def main():
     global scan_id
     global public_ip
     global gateway_ip
+    global started
 
     # Find data needed for scans
     log_activity('Preparing for scan:')
@@ -266,12 +338,14 @@ def main():
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
+    started = time.time()												#new
     parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'),
                       run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
     get_cves()
+    consolidate_router_scans()											#new
     calc_vuln_scores_grades()
 
     # Dump the final results to the database
