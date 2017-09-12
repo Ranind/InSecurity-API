@@ -231,8 +231,14 @@ def consolidate_router_scans():
 
     	# match
     	if Device['IP'] == gateway_ip:
-    		 data['Router']['MAC_Address'] = Device['MAC_Address']
-    		 data['Router']['Vendor'] = Device['Vendor']
+
+            data['Router']['IP'] = gateway_ip
+            
+    		data['Router']['MAC_Address'] = Device['MAC_Address']
+    		data['Router']['Vendor'] = Device['Vendor']
+            data['Router']['host_CPE_list'] += Device['host_CPE_list']
+            data['Router']['host_CVE_list'] += Device['host_CVE_list']
+            data['Router']['Services'] += Device['Services']
 
 	        # CPEs
 	        for CPE in Device['host_CPE_list']:
