@@ -214,11 +214,11 @@ def get_cves():
         for CPE in Service['service_CPE_list']:
             Service['service_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
 
-#new
+
 def consolidate_router_scans():
-	global data
-	global public_ip
-	global gateway_ip
+    global data
+    global public_ip
+    global gateway_ip
 
     # set router publicIP
     data['Router']['publicIP'] = public_ip
@@ -226,37 +226,20 @@ def consolidate_router_scans():
     # move router internal scan from device section of report to router section of report
     for i, Device in enumerate(data['Devices']):
 
-    	# match
-    	if Device['IP'] == gateway_ip:
+        # match
+        if Device['IP'] == gateway_ip:
 
             data['Router']['IP'] = gateway_ip
             
-    		data['Router']['MAC_Address'] = Device['MAC_Address']
-    		data['Router']['Vendor'] = Device['Vendor']
-            data['Router']['host_CPE_list'] += Device['host_CPE_list']
-            data['Router']['host_CVE_list'] += Device['host_CVE_list']
-            data['Router']['Services'] += Device['Services']
+            data['Router']['MAC_Address'] = Device['MAC_Address']
+            data['Router']['Vendor'] = Device['Vendor']
+            break
 
-	        # CPEs
-	        for CPE in Device['host_CPE_list']:
-	            Router['host_CPE_list'].extend(CPE)
-
-	        # CVEs
-	        for CVE in Device['host_CVE_list']:
-	            Router['host_CVE_list'].extend(CVE)
-
-	        # Services
-	        for Service in Device['Services']:
-	        	Router['Services'].extend(Service)
-
-	        # remove from device list
-			del data['Devices'][i]
-       		break
 
 def create_report():
-	global data
-	global scan_id
-	global db_connection
+    global data
+    global scan_id
+    global db_connection
 
     log_activity('\tConverting data format')
 
@@ -270,17 +253,17 @@ def create_report():
 
     #insert scan into database
     """
-	CREATE TABLE Scan (
-	  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	  scanType VARCHAR(13) NOT NULL,
-	  creator VARCHAR(15) NOT NULL,
-	  status VARCHAR(11) NOT NULL DEFAULT 'In-Progress',
-	  started DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	  completed DATETIME,
-	  progress TINYINT NOT NULL DEFAULT 0,
-	  report TEXT
-	);
-	"""
+    CREATE TABLE Scan (
+      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      scanType VARCHAR(13) NOT NULL,
+      creator VARCHAR(15) NOT NULL,
+      status VARCHAR(11) NOT NULL DEFAULT 'In-Progress',
+      started DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      completed DATETIME,
+      progress TINYINT NOT NULL DEFAULT 0,
+      report TEXT
+    );
+    """
     v_id = scan_id
     v_scanType = data['scanType']
     v_creator = 'f:scanner.py'			#unsure
@@ -291,7 +274,7 @@ def create_report():
     v_report = str(json.dumps(data))
 
     c.execute("INSERT INTO Scan (id, scanType, creator, status, started, completed, progress, report) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
-    				(v_id, v_scanType, v_creator, v_status, v_started, v_completed, v_progress, v_report))
+                    (v_id, v_scanType, v_creator, v_status, v_started, v_completed, v_progress, v_report))
     db_connection.commit()
 
 
