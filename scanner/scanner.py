@@ -208,26 +208,36 @@ def get_cves():
 
     log_activity('\tFinding CVEs')
 
+    progress = 0
+    progress_increment = 1 / count_cpes(data)
+
     # Device CVEs
     for Device in data['Devices']:
         # Host CVEs
         for CPE in Device['host_CPE_list']:
             Device['host_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+            progress += progress_increment
+            update_progress('cves', progress)
 
         # Services CVEs
         for Service in Device['Services']:
             for CPE in Service['service_CPE_list']:
                 Service['service_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+                progress += progress_increment
+                update_progress('cves', progress)
 
     # Router (host) CVEs
     for CPE in data['Router']['host_CPE_list']:
         data['Router']['host_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+        progress += progress_increment
+        update_progress('cves', progress)
 
     # Router Services and corresponding CVEs
     for Service in data['Router']['Services']:
         for CPE in Service['service_CPE_list']:
             Service['service_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
-
+            progress += progress_increment
+            update_progress('cves', progress)
 
 def consolidate_router_scans():
     global data
