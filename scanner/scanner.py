@@ -310,7 +310,9 @@ def main():
     log_activity('Preparing for scan:')
     update_progress('prep', 0)
     public_ip = get_public_ip()
+    update_progress('prep', .33)
     gateway_ip = get_gateway()
+    update_progress('prep', .67)
     network = get_network()
     update_progress('prep', 1)
 
