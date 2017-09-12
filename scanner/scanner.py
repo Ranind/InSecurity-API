@@ -1,9 +1,6 @@
-# TODO: Use the correct import for python 3, add any pip steps to provision.sh
 import MySQLdb
 import subprocess
 import re
-
-#new
 import json
 import time
 
@@ -257,15 +254,19 @@ def consolidate_router_scans():
        		break
 
 def create_report():
-	#new
 	global data
-	global started
 	global scan_id
 	global db_connection
 
     log_activity('\tConverting data format')
 
     c = db_connection.cursor()
+
+    # load time started from db
+    c.execute("SELECT started FROM Scan WHERE id=%s", (scan_id,))
+    db_connection.commit()
+
+    started = str(c.fetchone()[0])
 
     #insert scan into database
     """
@@ -292,8 +293,6 @@ def create_report():
     c.execute("INSERT INTO Scan (id, scanType, creator, status, started, completed, progress, report) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
     				(v_id, v_scanType, v_creator, v_status, v_started, v_completed, v_progress, v_report))
     db_connection.commit()
-
-    #return ''	
 
 
 def log_activity(log_string):
@@ -334,7 +333,6 @@ def main():
     global scan_id
     global public_ip
     global gateway_ip
-    global started
 
     # Find data needed for scans
     log_activity('Preparing for scan:')
@@ -344,14 +342,13 @@ def main():
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
-    started = time.time()												#new
     parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'),
                       run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
     get_cves()
-    consolidate_router_scans()											#new
+    consolidate_router_scans()
     calc_vuln_scores_grades()
 
     # Dump the final results to the database
