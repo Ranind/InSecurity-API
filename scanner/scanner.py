@@ -145,7 +145,7 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 
     # private nmap scan parsing
     #scan = libnmap_parse_xml(private_xml_path)
-    subprocess.call([sys.executable, '../../CVE-Scan/bin/analyzer.py', '-x', private_xml_path, 'enhanced_scan.json'])
+    subprocess.call([sys.executable, '../../CVE-Scan/bin/analyzer.py', '-x', "../../InSecurity-API/nmap_results_private_1.xml", '../../InSecurity-API/enhanced_scan.json'], shell=True)
 
     # host information (Report.Devices)
     #for _host in scan.hosts:
@@ -157,7 +157,7 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 
     # router information (Report.Router)
     #router = libnmap_host_to_device_schema(scan.hosts[0])
-    router['publicIP'] = get_public_ip()
+    #router['publicIP'] = get_public_ip()
     #data['Router'] = router
 
 
@@ -262,18 +262,18 @@ def main():
 
     # Find data needed for scans
     log_activity('Preparing for scan:')
-    public_ip = get_public_ip()
+    #public_ip = get_public_ip()
     gateway_ip = get_gateway()
     network = get_network()
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
-    parse_nmap_output(run_nmap(['-T4', '-A', '-O', network], 'private'),
-                      run_nmap(['-T4', '-A', public_ip], 'public'))
+    parse_nmap_output(run_nmap(['-T4', '-A', '-O', network], 'private'), "NULL")#,
+                      #run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
-    log_activity('Enriching scan results:')
-    get_cves()
+    log_activity("Enriching scan results:")
+    #get_cves()
     calc_vuln_scores_grades()
 
     # Dump the final results to the database
