@@ -10,7 +10,7 @@ CREATE TABLE Scan (
   started DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   completed DATETIME,
   progress TINYINT NOT NULL DEFAULT 0,
-  report TEXT
+  report LONGTEXT
 );
 
 CREATE TABLE Devices (

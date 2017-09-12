@@ -37,7 +37,7 @@ def run_nmap(args, scan):
     """
     log_activity('\tScanning ' + scan + ' network')
 
-    xml_path = 'nmap_results_%s_%s.xml' % (scan, scan_id)
+    xml_path = '/tmp/nmap_results_%s_%s.xml' % (scan, scan_id)
     nmap_cmd = ['nmap'] + args + ['-oX', xml_path]
     nmap = subprocess.Popen(nmap_cmd, stdout=subprocess.PIPE)
 
@@ -46,6 +46,8 @@ def run_nmap(args, scan):
         line = nmap.stdout.readline()
         if not line:
             break
+        else:
+            print(line)
 
     xml_abs_path = os.path.abspath(xml_path)
 
@@ -143,6 +145,8 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 
     log_activity('\tParsing scan output')
 
+    data['Devices'] = []
+
     # private nmap scan parsing
     scan = libnmap_parse_xml(private_xml_path)
 
@@ -155,7 +159,10 @@ def parse_nmap_output(private_xml_path, public_xml_path):
     scan = libnmap_parse_xml(public_xml_path)
 
     # router information (Report.Router)
-    router = libnmap_host_to_device_schema(scan.hosts[0])
+    if len(scan.hosts) > 0:
+        router = libnmap_host_to_device_schema(scan.hosts[0])
+    else:
+        router = libnmap_host_to_device_schema(None)
     router['publicIP'] = get_public_ip()
     data['Router'] = router
 
@@ -245,36 +252,14 @@ def create_report():
 
     c = db_connection.cursor()
 
-    # load time started from db
-    c.execute("SELECT started FROM Scan WHERE id=%s", (scan_id,))
+    # Add device IPs to the devices table
+    for d in data['Devices']:
+        c.execute("INSERT INTO Devices (id, ip) VALUES (%s, %s)", (scan_id, d['IP']))
     db_connection.commit()
 
-    started = str(c.fetchone()[0])
-
-    #insert scan into database
-    """
-    CREATE TABLE Scan (
-      id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-      scanType VARCHAR(13) NOT NULL,
-      creator VARCHAR(15) NOT NULL,
-      status VARCHAR(11) NOT NULL DEFAULT 'In-Progress',
-      started DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      completed DATETIME,
-      progress TINYINT NOT NULL DEFAULT 0,
-      report TEXT
-    );
-    """
-    v_id = scan_id
-    v_scanType = data['scanType']
-    v_creator = 'f:scanner.py'			#unsure
-    v_status = 'Completed'
-    v_started = str(started)
-    v_completed = str(time.time())
-    v_progress = str(100)				#must be TINYINT
-    v_report = str(json.dumps(data))
-
-    c.execute("INSERT INTO Scan (id, scanType, creator, status, started, completed, progress, report) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
-                    (v_id, v_scanType, v_creator, v_status, v_started, v_completed, v_progress, v_report))
+    # Insert report into database and update scan metadata
+    r_json = str(json.dumps(data))
+    c.execute("UPDATE Scan SET status='Completed', completed=CURRENT_TIMESTAMP, progress=100, report=%s WHERE id=%s;", (r_json, scan_id))
     db_connection.commit()
 
 
@@ -325,8 +310,7 @@ def main():
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
-    parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'),
-                      run_nmap(['-T4', '-A', public_ip], 'public'))
+    parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'), run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
     log_activity('Enriching scan results:')

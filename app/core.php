@@ -181,7 +181,8 @@ $app->group('/Scan', function () use ($app) {
             ':id' => $request->getAttribute('id')
         ]);
 
-        return $response->withJson($stmt->fetch()['id']);
+        return $response->write($stmt->fetch()['report'])
+                        ->withHeader('Content-Type', 'application/json');
     })->setName('report');
 
 });

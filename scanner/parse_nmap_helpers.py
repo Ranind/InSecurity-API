@@ -64,14 +64,21 @@ def cpe_object_to_dict(libnmap_cpe_obj):
 def libnmap_host_to_device_schema(host):
     device = {
         'Vulnerability_Score': default_value(int),
-        'IP': return_json_value(host.ipv4, str),             
-        'MAC_Address':  return_json_value(host.mac, str),
-        'Vendor': return_json_value(host.vendor, str),
+        'IP': default_value(str),
+        'MAC_Address':  default_value(str),
+        'Vendor': default_value(str),
         'host_CPE_list': [],
         'host_CVE_list': [],
         'Services': [],                                         
         'Identification_Accuracy': default_value(int)
     }
+
+    if host is None:
+        return device
+
+    device['IP'] = return_json_value(host.ipv4, str)
+    device['MAC_Address'] = return_json_value(host.mac, str)
+    device['Vendor'] = return_json_value(host.vendor, str)
 
     # Host CPE list
     host_cpe_list = []
