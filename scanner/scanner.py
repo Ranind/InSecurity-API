@@ -18,10 +18,10 @@ network = None
 # TODO: Determine appropriate weights
 progress_weights = {
     'prep': 5,
-    'nmap_public': 5,
-    'nmap_private': 5,
+    'nmap_public': 25,
+    'nmap_private': 25,
     'parse': 5,
-    'cves': 5,
+    'cves': 30,
     'scores': 5,
     'report': 5
 }
@@ -276,6 +276,10 @@ def log_activity(log_string):
 
 
 def update_progress(job, job_percentage):
+    """
+    Update global progress, given the current job, and current job's percentage.
+    Percentage should be between 0 - 1.
+    """
     global progress_weights
     global cumulative_progress
     global incremental_progress
@@ -293,7 +297,7 @@ def update_progress(job, job_percentage):
         incremental_progress = current_progress
 
     # Job completed, update cumulative_progress
-    if job_percentage == 100:
+    if job_percentage == 1:
         cumulative_progress = incremental_progress
 
 
@@ -304,23 +308,38 @@ def main():
 
     # Find data needed for scans
     log_activity('Preparing for scan:')
+    update_progress('prep', 0)
     public_ip = get_public_ip()
     gateway_ip = get_gateway()
     network = get_network()
+    update_progress('prep', 1)
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
-    parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'), run_nmap(['-T4', '-A', public_ip], 'public'))
+
+    private_xml_path = run_nmap(['-T4', '-A', network], 'private')
+    update_progress('nmap_private', 1)
+
+    public_xml_path = run_nmap(['-T4', '-A', public_ip], 'public')
+    update_progress('nmap_public', 1)
+
+    parse_nmap_output(private_xml_path, public_xml_path)
+    update_progress('parse', 1)
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
+
     get_cves()
+    update_progress('cves', 1)
+
     consolidate_router_scans()
     calc_vuln_scores_grades()
+    update_progress('scores', 1)
 
     # Dump the final results to the database
     log_activity('Generating report:')
     create_report()
+    update_progress('report', 1)
 
     log_activity('Scan completed')
 
