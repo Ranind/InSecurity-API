@@ -2,6 +2,7 @@
 import MySQLdb
 import subprocess
 import re
+import sys
 
 from parse_nmap_helpers import *
 from get_cves_helpers import *
@@ -140,23 +141,24 @@ def get_public_ip():
 def parse_nmap_output(private_xml_path, public_xml_path):
     global data
 
-    log_activity('\tParsing scan output')
+    #log_activity('\tParsing scan output')
 
     # private nmap scan parsing
-    scan = libnmap_parse_xml(private_xml_path)
+    #scan = libnmap_parse_xml(private_xml_path)
+    subprocess.call([sys.executable, '../../CVE-Scan/bin/analyzer.py', '-x', private_xml_path, 'enhanced_scan.json'])
 
     # host information (Report.Devices)
-    for _host in scan.hosts:
-        device = libnmap_host_to_device_schema(_host)
-        data['Devices'].append(device)
+    #for _host in scan.hosts:
+    #    device = libnmap_host_to_device_schema(_host)
+    #    data['Devices'].append(device)
 
     # public nmap scan parsing
-    scan = libnmap_parse_xml(public_xml_path)
+    #scan = libnmap_parse_xml(public_xml_path)
 
     # router information (Report.Router)
-    router = libnmap_host_to_device_schema(scan.hosts[0])
+    #router = libnmap_host_to_device_schema(scan.hosts[0])
     router['publicIP'] = get_public_ip()
-    data['Router'] = router
+    #data['Router'] = router
 
 
 def calc_vuln_scores_grades():
@@ -266,7 +268,7 @@ def main():
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
-    parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'),
+    parse_nmap_output(run_nmap(['-T4', '-A', '-O', network], 'private'),
                       run_nmap(['-T4', '-A', public_ip], 'public'))
 
     # Enrich the scan results
