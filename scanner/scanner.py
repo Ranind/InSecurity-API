@@ -38,16 +38,23 @@ def run_nmap(args, scan):
     log_activity('\tScanning ' + scan + ' network')
 
     xml_path = '/tmp/nmap_results_%s_%s.xml' % (scan, scan_id)
-    nmap_cmd = ['nmap'] + args + ['-oX', xml_path]
+    nmap_cmd = ['nmap', '-v'] + args + ['-oX', xml_path]
     nmap = subprocess.Popen(nmap_cmd, stdout=subprocess.PIPE)
 
+    # TODO: Increment shouldn't be hard coded here, should be
+    #       dependent on nmap args/scan type
+    progress_increment = .1
+    progress = 0
+    # Parse output from nmap looking for the lines beginning with:
+    # "Initiating _____" to increase progress for each scan.
+    # with -T4 -A, there should be 10 separate scans
     while True:
-        # TODO: parse this for progress
-        line = nmap.stdout.readline()
+        line = nmap.stdout.readline().decode('UTF-8')
         if not line:
             break
-        else:
-            print(line)
+        if line.startswith('Initiating'):
+            progress += progress_increment
+            update_progress('nmap_%s' % scan, progress)
 
     xml_abs_path = os.path.abspath(xml_path)
 
