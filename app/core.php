@@ -114,7 +114,15 @@ $app->group('/Scanner', function () use ($app) {
 
 
     $app->get('/History', function(Request $request, Response $response) {
+        $stmt = $this->db->prepare('
+            SELECT Scan.id, scanType, started, completed, status, creator, count(Scan.id) as `deviceCount` 
+            FROM Scan LEFT JOIN Devices
+            ON Scan.id = Devices.id
+            GROUP BY Scan.id;');
 
+        $stmt->execute();
+
+        return $response->withJson($stmt->fetchAll());
     })->setName('history');
 
 });
@@ -122,14 +130,59 @@ $app->group('/Scanner', function () use ($app) {
 
 $app->group('/Scan', function () use ($app) {
 
-    $app->get('/{id}/Status', function (Request $request, Response $response, $args) {
-        // $request->getAttribute('id');
+    $app->get('/{id}/Status[/{since}]', function (Request $request, Response $response, $args) {
         // $args['since']
+        $stmt = $this->db->prepare("SELECT started, scanType, progress FROM Scan WHERE id=:id;");
+
+        $stmt->execute([
+            ':id' => $request->getAttribute('id')
+        ]);
+
+        $data = $stmt->fetch();
+
+        $data['devices'] = [];
+
+        $stmt = $this->db->prepare("SELECT ip FROM Devices WHERE id=:id;");
+
+        $stmt->execute([
+            ':id' => $request->getAttribute('id')
+        ]);
+
+        foreach($stmt->fetchAll() as $row)
+            $data['devices'][] = $row['ip'];
+
+        $data['activityLog'] = [];
+
+        $stmt = $this->db->prepare("SELECT eventTime, message FROM ActivityLog 
+                                    WHERE id=:id AND eventTime > :since ORDER BY eventTime;");
+
+        $stmt->execute([
+            ':id' => $request->getAttribute('id'),
+            ':since' => isset($args['since']) ? $args['since'] : '1-1-1970'
+        ]);
+
+
+        $rows = $stmt->fetchAll();
+
+        $data['lastActivityLogged'] = $rows[count($rows)-1]['eventTime'];
+
+        foreach($rows as $row)
+            $data['activityLog'][] = '[' . $row['eventTime'] . '] ' . $row['message'];
+
+        return $response->withJson($data);
+
     })->setName('status');
 
 
     $app->get('/{id}/Report', function (Request $request, Response $response) {
-        // $request->getAttribute('id');
+        $stmt = $this->db->prepare("SELECT report FROM Scan WHERE id=:id");
+
+        $stmt->execute([
+            ':id' => $request->getAttribute('id')
+        ]);
+
+        return $response->write($stmt->fetch()['report'])
+                        ->withHeader('Content-Type', 'application/json');
     })->setName('report');
 
 });

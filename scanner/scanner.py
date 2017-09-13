@@ -1,7 +1,8 @@
-# TODO: Use the correct import for python 3, add any pip steps to provision.sh
 import MySQLdb
 import subprocess
 import re
+import json
+import time
 
 from parse_nmap_helpers import *
 from get_cves_helpers import *
@@ -17,10 +18,10 @@ network = None
 # TODO: Determine appropriate weights
 progress_weights = {
     'prep': 5,
-    'nmap_public': 5,
-    'nmap_private': 5,
+    'nmap_public': 25,
+    'nmap_private': 25,
     'parse': 5,
-    'cves': 5,
+    'cves': 30,
     'scores': 5,
     'report': 5
 }
@@ -36,15 +37,24 @@ def run_nmap(args, scan):
     """
     log_activity('\tScanning ' + scan + ' network')
 
-    xml_path = 'nmap_results_%s_%s.xml' % (scan, scan_id)
-    nmap_cmd = ['nmap'] + args + ['-oX', xml_path]
+    xml_path = '/tmp/nmap_results_%s_%s.xml' % (scan, scan_id)
+    nmap_cmd = ['nmap', '-v'] + args + ['-oX', xml_path]
     nmap = subprocess.Popen(nmap_cmd, stdout=subprocess.PIPE)
 
+    # TODO: Increment shouldn't be hard coded here, should be
+    #       dependent on nmap args/scan type
+    progress_increment = .1
+    progress = 0
+    # Parse output from nmap looking for the lines beginning with:
+    # "Initiating _____" to increase progress for each scan.
+    # with -T4 -A, there should be 10 separate scans
     while True:
-        # TODO: parse this for progress
-        line = nmap.stdout.readline()
+        line = nmap.stdout.readline().decode('UTF-8')
         if not line:
             break
+        if line.startswith('Initiating'):
+            progress += progress_increment
+            update_progress('nmap_%s' % scan, progress)
 
     xml_abs_path = os.path.abspath(xml_path)
 
@@ -142,6 +152,8 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 
     log_activity('\tParsing scan output')
 
+    data['Devices'] = []
+
     # private nmap scan parsing
     scan = libnmap_parse_xml(private_xml_path)
 
@@ -154,7 +166,10 @@ def parse_nmap_output(private_xml_path, public_xml_path):
     scan = libnmap_parse_xml(public_xml_path)
 
     # router information (Report.Router)
-    router = libnmap_host_to_device_schema(scan.hosts[0])
+    if len(scan.hosts) > 0:
+        router = libnmap_host_to_device_schema(scan.hosts[0])
+    else:
+        router = libnmap_host_to_device_schema(None)
     router['publicIP'] = get_public_ip()
     data['Router'] = router
 
@@ -193,30 +208,76 @@ def get_cves():
 
     log_activity('\tFinding CVEs')
 
+    progress = 0
+    progress_increment = 1 / count_cpes(data)
+
     # Device CVEs
     for Device in data['Devices']:
         # Host CVEs
         for CPE in Device['host_CPE_list']:
             Device['host_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+            progress += progress_increment
+            update_progress('cves', progress)
 
         # Services CVEs
         for Service in Device['Services']:
             for CPE in Service['service_CPE_list']:
                 Service['service_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+                progress += progress_increment
+                update_progress('cves', progress)
 
     # Router (host) CVEs
     for CPE in data['Router']['host_CPE_list']:
         data['Router']['host_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+        progress += progress_increment
+        update_progress('cves', progress)
 
     # Router Services and corresponding CVEs
     for Service in data['Router']['Services']:
         for CPE in Service['service_CPE_list']:
             Service['service_CVE_list'].extend(cpe_to_dict_cve_list(CPE['cpeString']))
+            progress += progress_increment
+            update_progress('cves', progress)
+
+def consolidate_router_scans():
+    global data
+    global public_ip
+    global gateway_ip
+
+    # set router publicIP
+    data['Router']['publicIP'] = public_ip
+
+    # move router internal scan from device section of report to router section of report
+    for i, Device in enumerate(data['Devices']):
+
+        # match
+        if Device['IP'] == gateway_ip:
+
+            data['Router']['IP'] = gateway_ip
+            
+            data['Router']['MAC_Address'] = Device['MAC_Address']
+            data['Router']['Vendor'] = Device['Vendor']
+            break
 
 
 def create_report():
+    global data
+    global scan_id
+    global db_connection
+
     log_activity('\tConverting data format')
-    return ''
+
+    c = db_connection.cursor()
+
+    # Add device IPs to the devices table
+    for d in data['Devices']:
+        c.execute("INSERT INTO Devices (id, ip) VALUES (%s, %s)", (scan_id, d['IP']))
+    db_connection.commit()
+
+    # Insert report into database and update scan metadata
+    r_json = str(json.dumps(data))
+    c.execute("UPDATE Scan SET status='Completed', completed=CURRENT_TIMESTAMP, progress=100, report=%s WHERE id=%s;", (r_json, scan_id))
+    db_connection.commit()
 
 
 def log_activity(log_string):
@@ -232,6 +293,10 @@ def log_activity(log_string):
 
 
 def update_progress(job, job_percentage):
+    """
+    Update global progress, given the current job, and current job's percentage.
+    Percentage should be between 0 - 1.
+    """
     global progress_weights
     global cumulative_progress
     global incremental_progress
@@ -249,7 +314,7 @@ def update_progress(job, job_percentage):
         incremental_progress = current_progress
 
     # Job completed, update cumulative_progress
-    if job_percentage == 100:
+    if job_percentage == 1:
         cumulative_progress = incremental_progress
 
 
@@ -260,23 +325,40 @@ def main():
 
     # Find data needed for scans
     log_activity('Preparing for scan:')
+    update_progress('prep', 0)
     public_ip = get_public_ip()
+    update_progress('prep', .33)
     gateway_ip = get_gateway()
+    update_progress('prep', .67)
     network = get_network()
+    update_progress('prep', 1)
 
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
-    parse_nmap_output(run_nmap(['-T4', '-A', network], 'private'),
-                      run_nmap(['-T4', '-A', public_ip], 'public'))
+
+    private_xml_path = run_nmap(['-T4', '-A', network], 'private')
+    update_progress('nmap_private', 1)
+
+    public_xml_path = run_nmap(['-T4', '-A', public_ip], 'public')
+    update_progress('nmap_public', 1)
+
+    parse_nmap_output(private_xml_path, public_xml_path)
+    update_progress('parse', 1)
 
     # Enrich the scan results
     log_activity('Enriching scan results:')
+
     get_cves()
+    update_progress('cves', 1)
+
+    consolidate_router_scans()
     calc_vuln_scores_grades()
+    update_progress('scores', 1)
 
     # Dump the final results to the database
     log_activity('Generating report:')
     create_report()
+    update_progress('report', 1)
 
     log_activity('Scan completed')
 
