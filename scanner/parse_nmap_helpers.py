@@ -64,9 +64,9 @@ def cpe_object_to_dict(libnmap_cpe_obj):
 def libnmap_host_to_device_schema(host):
     device = {
         'Vulnerability_Score': default_value(int),
-        'IP': return_json_value(host.ipv4, str),             
-        'MAC_Address':  return_json_value(host.mac, str),
-        'Vendor': return_json_value(host.vendor, str),
+        'IP': return_json_value(host.get("ip"), str),             
+        'MAC_Address':  return_json_value(host.get("mac"), str),
+        'Vendor': return_json_value(host.get("vendor"), str),
         'host_CPE_list': [],
         'host_CVE_list': [],
         'Services': [],                                         
@@ -76,28 +76,29 @@ def libnmap_host_to_device_schema(host):
     # Host CPE list
     host_cpe_list = []
     
-    for c in host.os_match_probabilities():
-        host_cpe_list.extend(c.get_cpe())
+    for c in host.get('cpes'):
+        host_cpe_list.extend(c.get('cpe'))
     
     host_cpe_list = list(set(host_cpe_list))
     device['host_CPE_list'] = [cpe_object_to_dict(c) for c in host_cpe_list]
 
     # Services
-    for s in host.services:
+    for s in host.get('services'):
         service={
-            'port': return_json_value(s.port,int),
-            'banner': return_json_value(s.banner,str),
-            'protocol':return_json_value(s.protocol, str),
-            'name': return_json_value(s.service, str),
-            'state': return_json_value(s.state,str),
-            'reason': return_json_value(s.reason,str),
+            'port': s.get('port'),#return_json_value(s.port,int),
+            'banner': s.get('banner'),#return_json_value(s.banner,str),
+            'protocol': s.get('protocol'),#return_json_value(s.protocol, str),
+            'name': s.get('service'),#return_json_value(s.service, str),
+            'state': s.get('state'),#return_json_value(s.state,str),
+            'reason': s.get('reason'),#return_json_value(s.reason,str),
             'service_CPE_list': [],
             'service_CVE_list': []
         }
 
-        if s.cpelist:
+        #if s.cpelist:
+        if "cpelist" in s:
             # Service CPE list
-            for c in s.cpelist:
+            for c in s.get('cpelist'):
                 service['service_CPE_list'].append(cpe_object_to_dict(c))
 
         device['Services'].append(service)

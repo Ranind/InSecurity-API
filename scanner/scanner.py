@@ -7,6 +7,7 @@ import sys
 from parse_nmap_helpers import *
 from get_cves_helpers import *
 from calc_vuln_scores_grades_helpers import *
+from shared_functions import read_json
 
 db_connection = MySQLdb.connect(host='localhost', user='api', passwd='password', db='InSecurity')
 data = {}
@@ -141,16 +142,18 @@ def get_public_ip():
 def parse_nmap_output(private_xml_path, public_xml_path):
     global data
 
-    #log_activity('\tParsing scan output')
+    log_activity('\tParsing scan output')
 
     # private nmap scan parsing
     #scan = libnmap_parse_xml(private_xml_path)
-    subprocess.call([sys.executable, '../../CVE-Scan/bin/analyzer.py', '-x', "../../InSecurity-API/nmap_results_private_1.xml", '../../InSecurity-API/enhanced_scan.json'], shell=True)
-
+    subprocess.call(['python3', '/root/CVE-Scan/bin/analyzer.py', "-x", private_xml_path, "enhanced.json"], stdout=subprocess.PIPE)
+	
+    scan = read_json("enhanced.json")
+    systems = scan.get('systems')
     # host information (Report.Devices)
-    #for _host in scan.hosts:
-    #    device = libnmap_host_to_device_schema(_host)
-    #    data['Devices'].append(device)
+    for _host in systems:
+        device = libnmap_host_to_device_schema(_host)
+        data['Devices'].append(device)
 
     # public nmap scan parsing
     #scan = libnmap_parse_xml(public_xml_path)
