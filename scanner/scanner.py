@@ -358,7 +358,6 @@ def main():
     # Dump the final results to the database
     log_activity('Generating report:')
     create_report()
-    update_progress('report', 1)
 
     log_activity('Scan completed')
 
