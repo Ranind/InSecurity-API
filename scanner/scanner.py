@@ -163,12 +163,13 @@ def parse_nmap_output(private_xml_path, public_xml_path):
     # host information (Report.Devices)
     systems = scan.get('systems')
     for _host in systems:
-        device = libnmap_host_to_device_schema(_host)
-        data['Devices'].append(device)
+        if _hosts.get("status") is "up"
+            device = libnmap_host_to_device_schema(_host)
+            data['Devices'].append(device)
 
     # public nmap scan parsing
     #scan = libnmap_parse_xml(public_xml_path)
-	
+    
     scan = parse_enhanced_json("public_enhanced.json")
 
     # router information (Report.Router)
@@ -365,7 +366,6 @@ def main():
     # Dump the final results to the database
     log_activity('Generating report:')
     create_report()
-    update_progress('report', 1)
 
     log_activity('Scan completed')
 
