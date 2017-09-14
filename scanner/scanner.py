@@ -159,8 +159,9 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 
     # host information (Report.Devices)
     for _host in scan.hosts:
-        device = libnmap_host_to_device_schema(_host)
-        data['Devices'].append(device)
+        if _host.is_up():
+            device = libnmap_host_to_device_schema(_host)
+            data['Devices'].append(device)
 
     # public nmap scan parsing
     scan = libnmap_parse_xml(public_xml_path)
@@ -358,7 +359,6 @@ def main():
     # Dump the final results to the database
     log_activity('Generating report:')
     create_report()
-    update_progress('report', 1)
 
     log_activity('Scan completed')
 
