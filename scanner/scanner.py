@@ -155,19 +155,26 @@ def parse_nmap_output(private_xml_path, public_xml_path):
     data['Devices'] = []
 
     # private nmap scan parsing
-    scan = libnmap_parse_xml(private_xml_path)
+    #scan = libnmap_parse_xml(private_xml_path)
+    subprocess.call(['python3', '/root/CVE-Scan/bin/analyzer.py', "-x", private_xml_path, "private_enhanced.json"], stdout=subprocess.PIPE)
+
+    scan = parse_enhanced_json("private_enhanced.json")
 
     # host information (Report.Devices)
-    for _host in scan.hosts:
+    systems = scan.get('systems')
+    for _host in systems:
         device = libnmap_host_to_device_schema(_host)
         data['Devices'].append(device)
 
     # public nmap scan parsing
-    scan = libnmap_parse_xml(public_xml_path)
+    #scan = libnmap_parse_xml(public_xml_path)
+	
+    scan = parse_enhanced_json("public_enhanced.json")
 
     # router information (Report.Router)
+    systems = scan.get('systems')
     if len(scan.hosts) > 0:
-        router = libnmap_host_to_device_schema(scan.hosts[0])
+        router = libnmap_host_to_device_schema(systems[0])
     else:
         router = libnmap_host_to_device_schema(None)
     router['publicIP'] = get_public_ip()
@@ -348,7 +355,7 @@ def main():
     # Enrich the scan results
     log_activity('Enriching scan results:')
 
-    get_cves()
+    #get_cves()
     update_progress('cves', 1)
 
     consolidate_router_scans()
