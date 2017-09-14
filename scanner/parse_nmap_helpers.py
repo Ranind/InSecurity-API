@@ -86,8 +86,11 @@ def libnmap_host_to_device_schema(host):
     # Host CPE list
     host_cpe_list = []
     
-    for c in host.get("cpes"):
-        host_cpe_list.extend(c)
+    if "cpes" in host:
+        cpes = host.get("cpes")
+        if cpes:
+            for c in cpes:
+                host_cpe_list.extend(c)
     
     host_cpe_list = list(set(host_cpe_list))
     device['host_CPE_list'] = [cpe_object_to_dict(c) for c in host_cpe_list]
