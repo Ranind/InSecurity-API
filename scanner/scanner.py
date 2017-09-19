@@ -3,6 +3,7 @@ import subprocess
 import re
 import json
 import time
+import sys
 
 from parse_nmap_helpers import *
 from get_cves_helpers import *
@@ -43,7 +44,7 @@ def run_nmap(args, scan):
 
     # TODO: Increment shouldn't be hard coded here, should be
     #       dependent on nmap args/scan type
-    progress_increment = .1
+    progress_increment = .07
     progress = 0
     # Parse output from nmap looking for the lines beginning with:
     # "Initiating _____" to increase progress for each scan.
@@ -159,8 +160,9 @@ def parse_nmap_output(private_xml_path, public_xml_path):
 
     # host information (Report.Devices)
     for _host in scan.hosts:
-        device = libnmap_host_to_device_schema(_host)
-        data['Devices'].append(device)
+        if _host.is_up():
+            device = libnmap_host_to_device_schema(_host)
+            data['Devices'].append(device)
 
     # public nmap scan parsing
     scan = libnmap_parse_xml(public_xml_path)
@@ -304,9 +306,15 @@ def update_progress(job, job_percentage):
 
     current_progress = int(progress_weights[job] * job_percentage + cumulative_progress)
 
+    #if job_percentage > 1:
+    #    print('Progress for %s > 1!!!' % job)
+    #    sys.exit(1)
+
     # Percentage increased, update database to reflect current progress & update counter
     if current_progress > incremental_progress:
         c = db_connection.cursor()
+        if current_progress > 100:
+            current_progress = 100
 
         c.execute("UPDATE Scan SET progress=%s WHERE id=%s;", (current_progress, scan_id))
         db_connection.commit()
@@ -326,7 +334,8 @@ def main():
     # Find data needed for scans
     log_activity('Preparing for scan:')
     update_progress('prep', 0)
-    public_ip = get_public_ip()
+    public_ip = get_network()
+    #public_ip = get_public_ip()
     update_progress('prep', .33)
     gateway_ip = get_gateway()
     update_progress('prep', .67)
@@ -336,10 +345,10 @@ def main():
     # Scan the network and parse the results
     log_activity('Starting scan (ID = %d):' % scan_id)
 
-    private_xml_path = run_nmap(['-T4', '-A', network], 'private')
+    private_xml_path = run_nmap(['-T5', '-sV', '-O', '-p1-1000', network], 'private')
     update_progress('nmap_private', 1)
 
-    public_xml_path = run_nmap(['-T4', '-A', public_ip], 'public')
+    public_xml_path = run_nmap(['-T5', '-sV', '-O', '-p1-1000', public_ip], 'public')
     update_progress('nmap_public', 1)
 
     parse_nmap_output(private_xml_path, public_xml_path)

@@ -103,9 +103,9 @@ $app->group('/Scanner', function () use ($app) {
             // TODO: Insert into devices table for targeted scans (if supported at a later date)
 
             // Fire and forget scanner
-            $cmd = 'python3 ' . __DIR__ . '/../scanner/scanner.py ' . $scan_id;
-            $PID = trim(shell_exec("$cmd >> " . __DIR__ . '/logs/scanner.log 2>&1 & echo $!'));
-
+            //$cmd = 'python3 ' . __DIR__ . '/../scanner/scanner.py ' . $scan_id;
+            //$PID = trim(shell_exec('$cmd > /tmp/scanner.log 2>&1 &'));
+	    $PID = trim(shell_exec('python3 /home/justin/InSecurity-API/scanner/scanner.py ' . $scan_id . ' >> /tmp/scanner.log 2>&1 &'));
             // Inform user the request has been successfully created
             return $response->withJson(['id' => $scan_id], 201);
         }
@@ -141,7 +141,7 @@ $app->group('/Scan', function () use ($app) {
 
     $app->get('/{id}/Status[/{since}]', function (Request $request, Response $response, $args) {
         // $args['since']
-        $stmt = $this->db->prepare("SELECT started, scanType, progress FROM Scan WHERE id=:id;");
+        $stmt = $this->db->prepare("SELECT started, scanType, status, progress FROM Scan WHERE id=:id;");
 
         $stmt->execute([
             ':id' => $request->getAttribute('id')
@@ -177,6 +177,8 @@ $app->group('/Scan', function () use ($app) {
 
         foreach($rows as $row)
             $data['activityLog'][] = '[' . $row['eventTime'] . '] ' . $row['message'];
+
+	$data['progress'] = ((int)($data['progress']));
 
         return $response->withJson($data);
 
